@@ -11,11 +11,16 @@ const baseURL = process.env.AUTH_URL ?? `http://localhost:${port}`
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 
+const frontendOrigin = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.replace(/\/$/, "")
+  : undefined
+
 export const auth = betterAuth({
   baseURL,
   trustedOrigins: [
     baseURL,
     "http://localhost:5173",
+    ...(frontendOrigin ? [frontendOrigin] : []),
   ],
   socialProviders: googleClientId && googleClientSecret ? {
     google: {

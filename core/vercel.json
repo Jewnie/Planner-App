@@ -1,8 +1,8 @@
 {
     "builds": [
-      { "src": "src/serverless.ts", "use": "@vercel/node" }
+      { "src": "src/server.ts", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/(.*)", "dest": "/src/serverless.ts" }
+      { "src": "/(.*)", "dest": "/src/server.ts" }
     ]
   }

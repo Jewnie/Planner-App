@@ -1,11 +1,15 @@
 {
     "builds": [
-      { "src": "dashboard/vite.config.ts", "use": "@vercel/vite" },
+    {
+      "src": "dashboard/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dashboard/dist" }
+    },
       { "src": "core/src/serverless.ts", "use": "@vercel/node" }
     ],
     "routes": [
     { "src": "/api/(.*)", "dest": "/core/src/serverless.ts" },
     { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/dashboard/index.html" }
+    { "src": "/(.*)", "dest": "/dashboard/dist/index.html" }
     ]
   }

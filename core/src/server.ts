@@ -43,7 +43,10 @@ app.get("/api/session", async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch session" })
   }
 })
-
+if(process.env.NODE_ENV === "dev") {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`)
 })
+}
+
+export default app

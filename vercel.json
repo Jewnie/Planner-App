@@ -3,13 +3,13 @@
     {
       "src": "dashboard/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dashboard/dist" }
+      "config": { "distDir": "dist" }
     },
       { "src": "core/src/serverless.ts", "use": "@vercel/node" }
     ],
     "routes": [
     { "src": "/api/(.*)", "dest": "/core/src/serverless.ts" },
     { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/dashboard/dist/index.html" }
+    { "src": "/(.*)", "dest": "/index.html" }
     ]
   }

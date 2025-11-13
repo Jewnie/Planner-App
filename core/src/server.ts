@@ -1,5 +1,7 @@
 import express from "express"
 import cors from "cors"
+import serverless from "serverless-http";
+
 import "dotenv/config"
 
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node"
@@ -49,4 +51,4 @@ app.listen(port, () => {
 })
 }
 
-export default app
+export default serverless(app)

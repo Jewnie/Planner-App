@@ -11,39 +11,44 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { NavUser } from "./nav-user"
+// import { authClient } from "@/lib/auth-client"
 
 // Menu items.
 const items = [
   {
     title: "Home",
-    url: "/",
+    url: "/dashboard",
     icon: Home,
     exact: true,
   },
   {
     title: "Inbox",
-    url: "/inbox",
+    url: "/dashboard/inbox",
     icon: Inbox,
   },
   {
     title: "Calendar",
-    url: "/calendar",
+    url: "/dashboard/calendar",
     icon: Calendar,
   },
   {
     title: "Search",
-    url: "/search",
+    url: "/dashboard/search",
     icon: Search,
   },
   {
     title: "Settings",
-    url: "/settings",
+    url: "/dashboard/settings",
     icon: Settings,
   },
 ]
 
 export function AppSidebar() {
   const location = useLocation()
+  // const userId = authClient.useSession().data?.session?.userId
+
+
 
   return (
     <Sidebar>
@@ -73,6 +78,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <NavUser user={{name:"dzaki", email:"dzaki@gmail.com", avatar:"https://github.com/shadcn.png"}} />
     </Sidebar>
   )
 }

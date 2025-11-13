@@ -1,5 +1,4 @@
-import "./App.css"
-import { Routes, Route, Navigate } from "react-router-dom"
+import { Routes, Route, Outlet } from "react-router-dom"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import {
@@ -21,7 +20,7 @@ function AppLayout() {
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-4 border-b px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex overflow-hidden items-center gap-2">
             <SidebarTrigger className="-ml-1 md:hidden" />
             <Separator orientation="vertical" className="h-6 bg-border md:hidden" />
           </div>
@@ -30,17 +29,7 @@ function AppLayout() {
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <Routes>
-            {/* Dynamic user routes */}
-            <Route path=":userId">
-              <Route index element={<HomePage />} />
-              <Route path="inbox" element={<InboxPage />} />
-              <Route path="calendar" element={<CalendarPage />} />
-              <Route path="search" element={<SearchPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="." replace />} />
-            </Route>
-          </Routes>
+          <Outlet />
         </div>
       </SidebarInset>
     </SidebarProvider>
@@ -51,13 +40,19 @@ export default function App() {
   return (
     <Routes>
       {/* Login — no sidebar */}
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<LoginPage />} />
 
       {/* Main app layout */}
-      <Route path="/*" element={<AppLayout />} />
+      <Route path="/dashboard" element={<AppLayout />}>
+        <Route index element={<HomePage />} />
+        <Route path="inbox" element={<InboxPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="search" element={<SearchPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
 
       {/* Catch-all fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
     </Routes>
   )
 }

@@ -4,7 +4,8 @@
       { "src": "core/src/serverless.ts", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/api/(.*)", "dest": "/core/src/serverless.ts" },
-      { "src": "/(.*)", "dest": "/dashboard/$1" }
+    { "src": "/api/(.*)", "dest": "/core/src/serverless.ts" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/dashboard/index.html" }
     ]
   }

@@ -6,7 +6,7 @@ import "dotenv/config"
 
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node"
 
-import { auth } from "./auth"
+import { auth } from "./auth.js"
 
 const app = express()
 const port = Number(process.env.PORT) || 3000

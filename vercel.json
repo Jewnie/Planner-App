@@ -1,11 +1,10 @@
 {
     "builds": [
-      { "src": "dashboard/package.json", "use": "@vercel/next" },
-      { "src": "core/server.ts", "use": "@vercel/node" }
+      { "src": "dashboard/vite.config.ts", "use": "@vercel/vite" },
+      { "src": "core/src/serverless.ts", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/api/(.*)", "dest": "/core/server.ts" },
+      { "src": "/api/(.*)", "dest": "/core/src/serverless.ts" },
       { "src": "/(.*)", "dest": "/dashboard/$1" }
     ]
   }
-  

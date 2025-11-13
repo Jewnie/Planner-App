@@ -1,6 +1,6 @@
 import express from "express"
 import cors from "cors"
-import serverless from "serverless-http";
+
 
 import "dotenv/config"
 
@@ -51,4 +51,4 @@ app.listen(port, () => {
 })
 }
 
-export default serverless(app)
+export default app

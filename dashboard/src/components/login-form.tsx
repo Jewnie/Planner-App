@@ -22,7 +22,7 @@ export function LoginForm({
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const response = await authClient.signIn.social({ provider: "google", callbackURL: "http://localhost:5173/dashboard" })
+    const response = await authClient.signIn.social({ provider: "google", callbackURL: import.meta.env.CALLBACK_AUTH_URL ?? "http://localhost:5173" })
     console.log(response)
   }
 

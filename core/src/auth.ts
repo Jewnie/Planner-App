@@ -14,7 +14,7 @@ const cookieDomain = process.env.COOKIE_DOMAIN
 
 const trustedOrigins = Array.from(
   new Set(
-    [appUrl, apiUrl, devUrl, ...extraTrustedOrigins].filter(
+    [appUrl, apiUrl, devUrl, "planner-app-eta-sage.vercel.app/dashboard", ...extraTrustedOrigins].filter(
       (origin): origin is string => Boolean(origin),
     ),
   ),

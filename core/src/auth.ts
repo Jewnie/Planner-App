@@ -16,10 +16,9 @@ export const auth = betterAuth({
   baseURL: "https://planner-app-tau.vercel.app",
 
   trustedOrigins: [
-    "https://planner-app-tau.vercel.app",
-    "http://localhost:5173",
-    "https://planner-app-six-zeta.vercel.app"
-
+    "https://planner-app-tau.vercel.app",        // backend
+    "https://planner-app-six-zeta.vercel.app",   // FRONTEND
+    "http://localhost:5173",                     // dev
   ],
 
   socialProviders: googleClientId && googleClientSecret ? {
@@ -38,7 +37,7 @@ export const auth = betterAuth({
     session: {
       secure: true,
       sameSite: "none",
-      // ❌ NO domain here
+      // ⚠️ DO NOT add domain
     },
   },
 

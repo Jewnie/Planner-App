@@ -16,7 +16,10 @@ export const auth = betterAuth({
   baseURL: "https://planner-app-tau.vercel.app",
 
   trustedOrigins: [
-    "https://planner-app-tau.vercel.app"
+    "https://planner-app-tau.vercel.app",
+    "http://localhost:5173",
+    "https://planner-app-six-zeta.vercel.app"
+
   ],
 
   socialProviders: googleClientId && googleClientSecret ? {

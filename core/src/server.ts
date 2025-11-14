@@ -1,28 +1,32 @@
 import express from "express"
 import cors from "cors"
 
-
 import "dotenv/config"
 
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node"
 
 import { auth } from "./auth.js"
 
-
 const app = express()
 const port = Number(process.env.PORT) || 3000
 
+const FRONTEND_URL = "https://planner-app-six-zeta.vercel.app"
+const BACKEND_URL = "https://planner-app-tau.vercel.app"
+const DEV_URL = "http://localhost:5173"
 
-
-
+app.set("trust proxy", 1)
 
 app.use(cors({
   origin: [
-    "https://planner-app-six-zeta.vercel.app",
-    "http://localhost:5173"
+    FRONTEND_URL,
+    DEV_URL,
+    BACKEND_URL,
   ],
-  credentials: true,       // <-- REQUIRED
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 200,
+}))
 
 app.use("/api/auth", toNodeHandler(auth))
 

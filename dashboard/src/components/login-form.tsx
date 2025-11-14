@@ -12,8 +12,10 @@ import {
   Field,
   FieldDescription,
   FieldGroup,
-
 } from "@/components/ui/field"
+
+const PROD_DASHBOARD_REDIRECT_URL = "https://planner-app-six-zeta.vercel.app/dashboard"
+const DEV_DASHBOARD_REDIRECT_URL = "http://localhost:5173/dashboard"
 
 export function LoginForm({
   className,
@@ -22,8 +24,24 @@ export function LoginForm({
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const response = await authClient.signIn.social({ provider: "google", callbackURL: "https://planner-app-tau.vercel.app/api/auth/callback/google" })
-    console.log(response)
+    const callbackURL =
+      typeof window !== "undefined" && window.location.origin.includes("localhost")
+        ? DEV_DASHBOARD_REDIRECT_URL
+        : PROD_DASHBOARD_REDIRECT_URL
+
+    const { data, error } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL,
+    })
+
+    if (error) {
+      console.error("Google sign-in failed", error)
+      return
+    }
+
+    if (data?.url) {
+      window.location.href = data.url
+    }
   }
 
   return (
@@ -39,7 +57,6 @@ export function LoginForm({
           <form onSubmit={handleLogin}>
             <FieldGroup>
               <Field>
-              
                 <Button variant="outline" type="submit" className="bg-white">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path
@@ -50,7 +67,6 @@ export function LoginForm({
                   Login with Google
                 </Button>
               </Field>
-             
             </FieldGroup>
           </form>
         </CardContent>

@@ -16,7 +16,7 @@ const EXTRA_ORIGINS = process.env.CORS_ORIGINS?.split(",").map((origin) => origi
 
 const allowedOrigins = Array.from(
   new Set(
-    [APP_URL, DEV_URL, ...EXTRA_ORIGINS].filter(
+    [APP_URL, DEV_URL, ...EXTRA_ORIGINS, "https://planner-app-eta-sage.vercel.app"].filter(
       (origin): origin is string => Boolean(origin),
     ),
   ),

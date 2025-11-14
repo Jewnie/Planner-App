@@ -8,19 +8,21 @@ import { toNodeHandler, fromNodeHeaders } from "better-auth/node"
 
 import { auth } from "./auth.js"
 
+
 const app = express()
 const port = Number(process.env.PORT) || 3000
 
-const frontendOrigin = (
-  process.env.FRONTEND_URL ?? "http://localhost:5173"
-).replace(/\/$/, "")
 
-app.use(
-  cors({
-    origin: frontendOrigin,
-    credentials: true,
-  })
-)
+
+
+
+app.use(cors({
+  origin: [
+    "https://planner-app-six-zeta.vercel.app",
+    "http://localhost:5173"
+  ],
+  credentials: true,       // <-- REQUIRED
+}));
 
 app.use("/api/auth", toNodeHandler(auth))
 

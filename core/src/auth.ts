@@ -32,12 +32,14 @@ export const auth = betterAuth({
     provider: "pg",
     schema,
   }),
-  advanced: {
-    defaultCookieAttributes: {
-      sameSite: 'None', // this enables cross-site cookies
-      secure: true, // required for SameSite=None
+  cookies: {
+    session: {
+      secure: true,
+      sameSite: "none",  // import: MUST be none for cross-domain
+      domain: baseURL,
     },
   },
+  
   plugins: [],
 })
 

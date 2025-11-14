@@ -1,18 +1,22 @@
+// dashboard/vite.config.ts
 import { defineConfig } from 'vite';
-import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+// 💡 Import 'path' for resolving file paths
+import path from 'path'; 
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // FIX 1: Set base to relative path for Vercel deployment assets
+  base: './', 
+  plugins: [react()],
   resolve: {
+    // 💡 FIX 2: Define the '@/' alias for Rollup/Vite
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      // This maps '@/' to the absolute path of the 'src' directory
+      '@': path.resolve(__dirname, './src'), 
     },
   },
-  base: "/", // IMPORTANT for Vercel to find assets correctly
   build: {
-    outDir: "dist", // make sure build output goes to dashboard/dist
-    assetsDir: "assets", // optional: where JS/CSS will be placed
-  },
+    // Ensure this matches your vercel.json 'distDir'
+    outDir: 'dist', 
+  }
 });

@@ -53,6 +53,8 @@ export function NavUser({
       });
   }
 
+  console.log(user)
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>

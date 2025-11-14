@@ -17,15 +17,15 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "core/src/server.ts"
+      "dest": "/core/src/server.ts"
     },
     {
       "src": "/(.*\\..+)",
-      "dest": "dashboard/dist/$1"
+      "dest": "/dashboard/dist/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "dashboard/dist/index.html"
+      "dest": "/dashboard/dist/index.html"
     }
   ]
 }

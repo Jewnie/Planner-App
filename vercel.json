@@ -1,5 +1,5 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "$schema": "https://openapi.vercel.sh/vercel/schemas/config.json",
   "builds": [
     { "src": "core/src/server.ts", "use": "@vercel/node" },
     {
@@ -10,6 +10,6 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/core/src/server.ts" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/dashboard/index.html" }
   ]
 }

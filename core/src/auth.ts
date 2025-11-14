@@ -40,6 +40,7 @@ export const auth = betterAuth({
       sameSite: "none",
     },
   },
+ 
 
   advanced: {
     useSecureCookies: true,
@@ -48,6 +49,8 @@ export const auth = betterAuth({
       secure: true,
     },
   },
+  
+  
 
   plugins: [],
 });

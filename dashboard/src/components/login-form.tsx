@@ -14,8 +14,10 @@ import {
   FieldGroup,
 } from "@/components/ui/field"
 
-const PROD_DASHBOARD_REDIRECT_URL = "https://planner-app-six-zeta.vercel.app/dashboard"
+const PROD_DASHBOARD_REDIRECT_URL = "https://planner-app-tau.vercel.app/api/auth/callback/google"
 const DEV_DASHBOARD_REDIRECT_URL = "http://localhost:5173/dashboard"
+
+
 
 export function LoginForm({
   className,
@@ -32,6 +34,7 @@ export function LoginForm({
     const { data, error } = await authClient.signIn.social({
       provider: "google",
       callbackURL,
+      
     })
 
     if (error) {
@@ -41,6 +44,7 @@ export function LoginForm({
 
     if (data?.url) {
       window.location.href = data.url
+      
     }
   }
 

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "builds": [
+    {
+      "src": "core/src/server.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "dashboard/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dashboard/dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "core/src/server.ts"
+    },
+    {
+      "src": "/(.*\\..+)",
+      "dest": "dashboard/dist/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dashboard/dist/index.html"
+    }
+  ]
+}
+

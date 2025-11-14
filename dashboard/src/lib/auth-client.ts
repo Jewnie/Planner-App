@@ -1,9 +1,12 @@
 import { createAuthClient } from "better-auth/react"
-export const authClient = createAuthClient({
-    /** The base URL of the server (optional if you're using the same domain) */
-    baseURL: "https://planner-app-tau.vercel.app", // backend url
-    fetchOptions: {
-        credentials: "include",  // REQUIRED
-      },
-})
 
+const apiBaseUrl =
+  import.meta.env.VITE_API_URL ??
+  (typeof window !== "undefined" ? window.location.origin : "")
+
+export const authClient = createAuthClient({
+  baseURL: apiBaseUrl || undefined,
+  fetchOptions: {
+    credentials: "include",
+  },
+})

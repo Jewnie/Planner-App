@@ -43,13 +43,12 @@ export const auth = betterAuth({
  
 
   advanced: {
-    useSecureCookies: true,
-    defaultCookieAttributes: {
-      sameSite: "none",
-      secure: true,
-    },
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: "planner-app-six-zeta.vercel.app", // your domain
   },
-  
+  },
+
   
 
   plugins: [],

@@ -20,12 +20,8 @@
       "dest": "/core/src/server.ts"
     },
     {
-      "src": "/(.*\\..+)",
-      "dest": "/dashboard/dist/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/dashboard/dist/index.html"
+      "dest": "/index.html"
     }
   ]
 }

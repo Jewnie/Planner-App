@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { NavUser } from "./nav-user"
+import { authClient } from "@/lib/auth-client"
 // import { authClient } from "@/lib/auth-client"
 
 // Menu items.
@@ -46,8 +47,8 @@ const items = [
 
 export function AppSidebar() {
   const location = useLocation()
-  // const userId = authClient.useSession().data?.session?.userId
-
+  const userId = authClient.useSession().data?.session?.userId
+  console.log(userId,"SESSION")
 
 
   return (

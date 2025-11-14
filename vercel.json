@@ -1,9 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": "dashboard/dist",
   "builds": [
     {
-      "src": "core/src/server.ts",
+      "src": "core/server.ts",
       "use": "@vercel/node"
     },
     {
@@ -17,12 +16,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/core/src/server.ts"
+      "dest": "/core/server.ts"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/dashboard/dist/index.html"
     }
   ]
 }
-

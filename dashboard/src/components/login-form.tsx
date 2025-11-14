@@ -14,8 +14,6 @@ import {
   FieldGroup,
 } from "@/components/ui/field"
 
-const PROD_DASHBOARD_REDIRECT_URL = "https://planner-app-tau.vercel.app/api/auth/callback/google"
-const DEV_DASHBOARD_REDIRECT_URL = "http://localhost:5173/dashboard"
 
 
 
@@ -26,14 +24,11 @@ export function LoginForm({
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const callbackURL =
-      typeof window !== "undefined" && window.location.origin.includes("localhost")
-        ? DEV_DASHBOARD_REDIRECT_URL
-        : PROD_DASHBOARD_REDIRECT_URL
+
 
     const { data, error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL,
+      callbackURL : "/dashboard"
       
     })
 

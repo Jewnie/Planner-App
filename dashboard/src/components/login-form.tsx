@@ -22,7 +22,7 @@ export function LoginForm({
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const response = await authClient.signIn.social({ provider: "google", callbackURL: "https://planner-app-tau.vercel.app" })
+    const response = await authClient.signIn.social({ provider: "google", callbackURL: "https://planner-app-tau.vercel.app/api/auth/callback/google" })
     console.log(response)
   }
 

@@ -28,7 +28,7 @@ export function LoginForm({
 
     const { data, error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL : "/dashboard"
+      callbackURL : "https://planner-app-six-zeta.vercel.app/dashboard"
       
     })
 

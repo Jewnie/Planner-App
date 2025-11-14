@@ -61,6 +61,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
 
+      
       {/* Main app layout */}
       <Route
         path="/dashboard"

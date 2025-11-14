@@ -58,20 +58,24 @@ export default function App() {
   return (
     <Routes>
       {/* Login — no sidebar */}
-      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/* Main app layout */}
-      <ProtectedRoute>
-      <Route path="/dashboard" element={<AppLayout />}>
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<HomePage />} />
         <Route path="inbox" element={<InboxPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
-      </ProtectedRoute>
-      {/* Catch-all fallback */}
-      {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
     </Routes>
   )
 }

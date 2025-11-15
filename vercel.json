@@ -9,9 +9,7 @@
     {
       "src": "dashboard/package.json",
       "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "config": { "distDir": "dist" }
     }
   ],
 
@@ -21,7 +19,11 @@
       "dest": "/core/src/server.ts"
     },
     {
-      "src": "^/(assets/.*)$",
+      "src": "^/assets/(.*)$",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "^/(vite\\.svg)$",
       "dest": "/$1"
     },
     {

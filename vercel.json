@@ -9,9 +9,8 @@
   }
   ],
   "rewrites": [
-  { "source": "/assets/(.*)", "destination": "/dashboard/assets/$1" },
-{ "source": "/api/(.*)", "destination": "/core/src/server.ts" },  
-{ "source": "/(.*)", "destination": "/dashboard/index.html" } 
-  
+  { "source": "/assets/(.)", "destination": "/dashboard/assets/$1" },
+  { "source": "/api/(.)", "destination": "/core/src/server.ts" },
+  { "source": "/(.*)", "destination": "/dashboard/index.html" }
   ]
   }

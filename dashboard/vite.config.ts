@@ -6,7 +6,7 @@ import path from 'path';
 
 export default defineConfig({
   // FIX 1: Set base to relative path for Vercel deployment assets
-  base: './', 
+  base: '/dashboard', 
   plugins: [react()],
   resolve: {
     // 💡 FIX 2: Define the '@/' alias for Rollup/Vite

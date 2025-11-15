@@ -17,16 +17,16 @@
 
   "routes": [
     {
-      "src": "^/assets/(.*)$",
-      "dest": "/dashboard/assets/$1"
-    },
-    {
       "src": "^/api/(.*)$",
       "dest": "/core/src/server.ts"
     },
     {
+      "src": "^/(assets/.*)$",
+      "dest": "/$1"
+    },
+    {
       "src": "^(.*)$",
-      "dest": "/dashboard/index.html"
+      "dest": "/index.html"
     }
   ]
 }

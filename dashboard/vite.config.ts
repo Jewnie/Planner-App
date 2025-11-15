@@ -5,8 +5,8 @@ import react from '@vitejs/plugin-react';
 import path from 'path'; 
 
 export default defineConfig({
-  // FIX 1: Set base to relative path for Vercel deployment assets
-  base: '/dashboard', 
+  // FIX 1: Set base to include trailing slash so built assets live under /dashboard/
+  base: '/dashboard/', 
   plugins: [react()],
   resolve: {
     // 💡 FIX 2: Define the '@/' alias for Rollup/Vite

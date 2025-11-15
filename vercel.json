@@ -1,5 +1,4 @@
 {
-  "rootDirectory": ".",
   "$schema": "https://openapi.vercel.sh/vercel/schemas/config.json",
   "builds": [
     {

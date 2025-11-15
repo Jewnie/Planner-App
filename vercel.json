@@ -1,6 +1,6 @@
 {
+  "rootDirectory": ".",
   "$schema": "https://openapi.vercel.sh/vercel/schemas/config.json",
-
   "builds": [
     {
       "src": "core/src/server.ts",
@@ -12,7 +12,6 @@
       "config": { "distDir": "dist" }
     }
   ],
-
   "routes": [
     {
       "src": "^/api/(.*)$",

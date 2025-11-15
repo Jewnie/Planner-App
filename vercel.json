@@ -1,10 +1,33 @@
 {
+  "rootDirectory": ".",
   "$schema": "https://openapi.vercel.sh/vercel/schemas/config.json",
-
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/core/src/server.ts" },
-    { "source": "/(assets/.*)", "destination": "/dashboard/dist/$1" },
-    { "source": "/(vite\\.svg)", "destination": "/dashboard/dist/$1" },
-    { "source": "/(.*)", "destination": "/dashboard/dist/index.html" }
+  "builds": [
+    {
+      "src": "core/src/server.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "dashboard/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "^/api/(.*)$",
+      "dest": "/core/src/server.ts"
+    },
+    {
+      "src": "^/assets/(.*)$",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "^/(vite\\.svg)$",
+      "dest": "/$1"
+    },
+    {
+      "src": "^(.*)$",
+      "dest": "/index.html"
+    }
   ]
 }

@@ -24,16 +24,10 @@ export const appRouter = router({
     if (!userAccount) {
       throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
     }
-    const requiredScope = "https://www.googleapis.com/auth/calendar.readonly";
-    const hasScope =
-      typeof userAccount.scope === "string" &&
-      userAccount.scope.split(" ").includes(requiredScope);
-    if (!hasScope) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Missing Google Calendar scope. Please reconnect Google with calendar access.",
-      });
-    }
+
+    // Log for debugging
+    console.log("User account scope:", userAccount.scope);
+    console.log("User account refresh token exists:", !!userAccount.refreshToken);
 
     const {accessToken} = await auth.api.getAccessToken({
         body: {
@@ -55,13 +49,25 @@ export const appRouter = router({
       refresh_token: userAccount.refreshToken ?? undefined,
     });
 
-    const calendarClient = google.calendar({version: 'v3', auth: oauth2});
-    const events = await calendarClient.events.list({
-      calendarId: 'primary',
-      timeMin: new Date().toISOString(),
-      maxResults: 10,
-    });
-    return events.data;
+    // Try to use the API - if it fails with insufficient permissions, we know the scope is missing
+    try {
+      const calendarClient = google.calendar({version: 'v3', auth: oauth2});
+      const events = await calendarClient.events.list({
+        calendarId: 'primary',
+        timeMin: new Date().toISOString(),
+        maxResults: 10,
+      });
+      return events.data;
+    } catch (error: unknown) {
+      const err = error as { code?: number | string; message?: string };
+      if (err.code === 403 || err.message?.includes("Insufficient Permission")) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Missing Google Calendar scope. Please reconnect Google with calendar access. (DB scope: ${userAccount.scope || "none"})`,
+        });
+      }
+      throw error;
+    }
   }),
 
 

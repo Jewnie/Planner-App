@@ -31,17 +31,16 @@ export const auth = betterAuth({
     google: {
       clientId: googleClientId,
       clientSecret: googleClientSecret,
-
+      scope: [
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/calendar.readonly",
+      ],
       authorization: {
         params: {
           access_type: "offline",         // needed for refresh tokens
           prompt: "consent",              // forces re-consent when scopes change
-          scope: [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/calendar"
-          ].join(" "),
         },
       },
     },

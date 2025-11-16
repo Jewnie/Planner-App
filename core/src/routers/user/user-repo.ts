@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db.js";
-import { account } from "../../db/schema.js";
+import { account } from "../../db/auth-schema.js";
 export const getUserAccount = async (userId: string) => {
 
     // const userData = await db.select().from(user).where(eq(user.id, userId));

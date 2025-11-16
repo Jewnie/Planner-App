@@ -8,6 +8,13 @@
       "when": 1763034423088,
       "tag": "0000_colossal_franklin_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763330828504,
+      "tag": "0001_add_calendar_schema",
+      "breakpoints": true
     }
   ]
 }

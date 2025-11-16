@@ -1,8 +1,13 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink, loggerLink } from "@trpc/client";
-import type { AppRouter } from "../../../core/src/routers";
+// Snapshot type is available at "@/types/app-router" if needed in the future.
 
-export const trpc = createTRPCReact<AppRouter>();
+// Fully erase types for the runtime tRPC react instance to avoid build-time coupling
+// to server-only types during dashboard build on Vercel.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const trpc: any =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (createTRPCReact as unknown as any)();
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -11,7 +16,7 @@ export function createTRPCClient() {
     links: [
       loggerLink({
         enabled: (opts) =>
-          (process.env.NODE_ENV === "development" && typeof window !== "undefined") ||
+          (import.meta.env.MODE === "development" && typeof window !== "undefined") ||
           (opts.direction === "down" && opts.result instanceof Error),
       }),
       httpBatchLink({

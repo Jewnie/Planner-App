@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
 import HomePage from "@/pages/dashboard"
 import InboxPage from "@/pages/inbox"
 import CalendarPage from "@/pages/calendar"
@@ -18,6 +19,18 @@ import { authClient } from "./lib/auth-client"
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const sessionQuery = authClient.useSession()
  
+  // Wait for the session query to finish loading before making redirect decisions
+  if (sessionQuery.isPending) {
+    return (
+      <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+        </div>
+      </div>
+    )
+  }
+
+  // Only redirect if session query is done and there's no session
   if (!sessionQuery.data?.session) {
     return <Navigate to="/login" replace />
   }

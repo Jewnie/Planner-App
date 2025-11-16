@@ -11,6 +11,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/core/src/server.ts" },
+    { "src": "/trpc/(.*)", "dest": "/core/src/server.ts" },
     { "src": "/(.*\\..+)", "dest": "/dashboard/$1" },
     { "src": "/(.*)", "dest": "/dashboard/index.html" }
   ]

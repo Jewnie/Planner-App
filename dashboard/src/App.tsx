@@ -1,24 +1,20 @@
-import { Routes, Route, Outlet, Navigate } from "react-router-dom"
+import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
 
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { Spinner } from "@/components/ui/spinner"
-import HomePage from "@/pages/dashboard"
-import InboxPage from "@/pages/inbox"
-import CalendarPage from "@/pages/calendar"
-import SearchPage from "@/pages/search"
-import SettingsPage from "@/pages/settings"
-import LoginPage from "@/pages/login"
-import { authClient } from "./lib/auth-client"
+import { AppSidebar } from '@/components/app-sidebar';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import HomePage from '@/pages/dashboard';
+import InboxPage from '@/pages/inbox';
+import CalendarPage from '@/pages/calendar';
+import SearchPage from '@/pages/search';
+import SettingsPage from '@/pages/settings';
+import LoginPage from '@/pages/login';
+import { authClient } from './lib/auth-client';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const sessionQuery = authClient.useSession()
- 
+  const sessionQuery = authClient.useSession();
+
   // Wait for the session query to finish loading before making redirect decisions
   if (sessionQuery.isPending) {
     return (
@@ -27,15 +23,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           <Spinner />
         </div>
       </div>
-    )
+    );
   }
 
   // Only redirect if session query is done and there's no session
   if (!sessionQuery.data?.session) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace />;
   }
-  return children
-}
+  return children;
+};
 
 function AppLayout() {
   return (
@@ -56,7 +52,7 @@ function AppLayout() {
         </div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }
 
 export default function App() {
@@ -66,7 +62,6 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
 
-      
       {/* Main app layout */}
       <Route
         path="/dashboard"
@@ -83,5 +78,5 @@ export default function App() {
         <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>
-  )
+  );
 }

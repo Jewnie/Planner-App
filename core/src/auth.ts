@@ -7,21 +7,13 @@ import { db } from "./db.js"
 import * as schema from "./db/schema.js"
 
 const appUrl = process.env.APP_URL
-const apiUrl = process.env.API_URL ?? appUrl
-const devUrl = process.env.DEV_URL ?? "http://localhost:5173"
-const extraTrustedOrigins = process.env.TRUSTED_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? []
-const cookieDomain = process.env.COOKIE_DOMAIN
+const apiUrl = process.env.API_URL 
 
 const trustedOrigins = Array.from(
   new Set(
     [
       appUrl,
       apiUrl,
-      devUrl,
-      // Add any preview/staging origins via TRUSTED_ORIGINS env rather than hardcoding
-      "https://planner-app-eta-sage.vercel.app",
-      "https://plnnr-app.johndev.org",
-      ...extraTrustedOrigins,
     ].filter(
       (origin): origin is string => Boolean(origin),
     ),
@@ -52,17 +44,7 @@ export const auth = betterAuth({
   cookies: {
     session: {
       secure: true,
-      sameSite: "none",
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
     },
   },
-
-  advanced: cookieDomain ? {
-    crossSubDomainCookies: {
-      enabled: true,
-      domain: cookieDomain,
-    },
-  } : undefined,
-
   plugins: [],
 })

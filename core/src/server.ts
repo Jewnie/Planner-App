@@ -12,26 +12,19 @@ const port = Number(process.env.PORT) || 3000
 
 const APP_URL = process.env.APP_URL
 const API_URL = process.env.API_URL ?? APP_URL
-const DEV_URL = process.env.DEV_URL ?? "http://localhost:5173"
-const EXTRA_ORIGINS = process.env.CORS_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? []
 
 const allowedOrigins = Array.from(
   new Set(
     [
       APP_URL,
       API_URL,
-      DEV_URL,
-      ...EXTRA_ORIGINS,
-      // Add any preview/staging origins via CORS_ORIGINS env rather than hardcoding
-      "https://planner-app-eta-sage.vercel.app",
-      "https://plnnr-app.johndev.org",
     ].filter(
       (origin): origin is string => Boolean(origin),
     ),
   ),
 )
 
-app.set("trust proxy", 1)
+app.set("trust proxy", 1) // todo: check if necessary
 
 app.use(cors({
   origin: (origin, callback) => {

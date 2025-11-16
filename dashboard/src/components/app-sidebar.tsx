@@ -1,5 +1,5 @@
 import { Calendar, Home, Settings } from "lucide-react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 import {
   Sidebar,
@@ -46,11 +46,11 @@ const items = [
 
 export function AppSidebar() {
   const location = useLocation()
-  const navigate = useNavigate()
- const user = authClient.useSession().data?.user
- if(!user){
-  navigate("/")
- }
+  const sessionQuery = authClient.useSession()
+  const user = sessionQuery.data?.user
+  
+  // ProtectedRoute already handles authentication, so no need to redirect here
+  // This prevents redirects during page refresh when session is still loading
 
 
   return (
@@ -81,7 +81,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <NavUser user={{name:user!.name, email:user!.email, avatar:user!.image ?? undefined}} />
+      {user && <NavUser user={{name:user.name, email:user.email, avatar:user.image ?? undefined}} />}
     </Sidebar>
   )
 }

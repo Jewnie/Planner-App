@@ -6,6 +6,9 @@ import "dotenv/config"
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node"
 
 import { auth } from "./auth.js"
+import { createContext } from "./trpc.js"
+import { appRouter } from "./routers/index.js"
+import { createExpressMiddleware } from "@trpc/server/adapters/express"
 
 const app = express()
 const port = Number(process.env.PORT) || 3000
@@ -43,6 +46,11 @@ app.use(cors({
 app.use("/api/auth", toNodeHandler(auth))
 
 app.use(express.json())
+
+app.use("/trpc", createExpressMiddleware({
+  router: appRouter,
+  createContext,
+}))
 
 app.get("/", (_req, res) => {
   res.json({ status: "ok" })

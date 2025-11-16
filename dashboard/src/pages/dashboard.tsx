@@ -1,4 +1,4 @@
-export default function HomePage() {
+export default function Dashboard() {
   return (
     <section className="rounded-lg border bg-card p-6 shadow-sm">
       <div className="flex flex-col gap-1">

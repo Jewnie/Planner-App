@@ -7,7 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import HomePage from "@/pages/home"
+import HomePage from "@/pages/dashboard"
 import InboxPage from "@/pages/inbox"
 import CalendarPage from "@/pages/calendar"
 import SearchPage from "@/pages/search"

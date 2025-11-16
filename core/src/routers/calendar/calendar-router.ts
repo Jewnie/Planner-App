@@ -1,0 +1,61 @@
+import { z } from "zod";
+import { router, publicProcedure, protectedProcedure } from "../../trpc.js";
+import { auth } from "../../auth.js";
+import { google } from 'googleapis';
+import { fromNodeHeaders } from "better-auth/node";
+import { getGoogleAccountForUser } from "../user/user-repo.js";
+export const appRouter = router({
+  health: publicProcedure.query(() => {
+    return { ok: true, time: new Date().toISOString() };
+  }),
+  me: protectedProcedure.query(({ ctx }) => {
+    return { user: ctx.session?.user ?? null };
+  }),
+  echo: publicProcedure.input(z.object({ message: z.string() })).query(({ input }) => {
+    return { message: input.message };
+  }),
+
+
+
+  fetchEvents: protectedProcedure.query(async ({ ctx }) => {
+
+    const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
+    if (!userAccount) {
+      throw new Error("No Google account linked");
+    }
+
+    const {accessToken} = await auth.api.getAccessToken({
+        body: {
+          providerId: "google",
+          accountId: userAccount.id,
+          userId: userAccount.userId,
+        },
+        headers: fromNodeHeaders(ctx.req.headers),
+      });
+
+    // Build an OAuth2 client and set the access token so googleapis uses OAuth instead of API key
+    const oauth2 = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+    );
+    oauth2.setCredentials({
+      access_token: accessToken,
+      // include refresh token so the client can auto-refresh if needed
+      refresh_token: userAccount.refreshToken ?? undefined,
+    });
+
+    const calendarClient = google.calendar({version: 'v3', auth: oauth2});
+    const events = await calendarClient.events.list({
+      calendarId: 'primary',
+      timeMin: new Date().toISOString(),
+      maxResults: 10,
+    });
+    return events.data;
+  }),
+
+
+});
+
+export type AppRouter = typeof appRouter;
+
+

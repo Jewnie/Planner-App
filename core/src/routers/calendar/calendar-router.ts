@@ -4,6 +4,7 @@ import { auth } from "../../auth.js";
 import { google } from 'googleapis';
 import { fromNodeHeaders } from "better-auth/node";
 import { getGoogleAccountForUser } from "../user/user-repo.js";
+import { TRPCError } from "@trpc/server";
 export const appRouter = router({
   health: publicProcedure.query(() => {
     return { ok: true, time: new Date().toISOString() };
@@ -21,7 +22,17 @@ export const appRouter = router({
 
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
-      throw new Error("No Google account linked");
+      throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
+    }
+    const requiredScope = "https://www.googleapis.com/auth/calendar.readonly";
+    const hasScope =
+      typeof userAccount.scope === "string" &&
+      userAccount.scope.split(" ").includes(requiredScope);
+    if (!hasScope) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Missing Google Calendar scope. Please reconnect Google with calendar access.",
+      });
     }
 
     const {accessToken} = await auth.api.getAccessToken({

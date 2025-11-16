@@ -24,26 +24,24 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 
 export const auth = betterAuth({
-  // baseURL must be a full origin (with protocol)
   baseURL: apiUrl ?? "http://localhost:3000",
-
   trustedOrigins,
 
   socialProviders: googleClientId && googleClientSecret ? {
     google: {
       clientId: googleClientId,
       clientSecret: googleClientSecret,
-      scope: [
-        "openid",
-        "email",
-        "profile",
-        "https://www.googleapis.com/auth/calendar.readonly",
-      ],
-      // Request refresh tokens so server can refresh when needed
+
       authorization: {
         params: {
-          access_type: "offline",
-          prompt: "consent",
+          access_type: "offline",         // needed for refresh tokens
+          prompt: "consent",              // forces re-consent when scopes change
+          scope: [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/calendar"
+          ].join(" "),
         },
       },
     },
@@ -55,9 +53,8 @@ export const auth = betterAuth({
   }),
 
   cookies: {
-    session: {
-      secure: true,
-    },
+    session: { secure: true },
   },
+
   plugins: [],
-})
+});

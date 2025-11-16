@@ -28,7 +28,7 @@ export function LoginForm({
 
     const { data, error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL : "https://planner-app-eta-sage.vercel.app/dashboard"
+      callbackURL : "https://plnnr-app.johndev.org/dashboard"
       
     })
 

@@ -47,7 +47,7 @@ export function NavUser({
     await authClient.signOut({
         fetchOptions: {
           onSuccess: () => {
-            navigate("/"); // redirect to login page
+            navigate("/login"); // redirect to login page
           },
         },
       });

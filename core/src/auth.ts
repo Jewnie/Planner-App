@@ -14,7 +14,15 @@ const cookieDomain = process.env.COOKIE_DOMAIN
 
 const trustedOrigins = Array.from(
   new Set(
-    [appUrl, apiUrl, devUrl, "https://planner-app-eta-sage.vercel.app/dashboard", ...extraTrustedOrigins].filter(
+    [
+      appUrl,
+      apiUrl,
+      devUrl,
+      // Add any preview/staging origins via TRUSTED_ORIGINS env rather than hardcoding
+      "https://planner-app-eta-sage.vercel.app",
+      "https://plnnr-app.johndev.org",
+      ...extraTrustedOrigins,
+    ].filter(
       (origin): origin is string => Boolean(origin),
     ),
   ),
@@ -24,6 +32,7 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 
 export const auth = betterAuth({
+  // baseURL must be a full origin (with protocol)
   baseURL: apiUrl ?? "http://localhost:3000",
 
   trustedOrigins,

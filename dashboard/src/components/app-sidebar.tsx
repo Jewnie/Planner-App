@@ -50,7 +50,7 @@ export function AppSidebar() {
   const user = sessionQuery.data?.user;
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Plnnr-app</SidebarGroupLabel>

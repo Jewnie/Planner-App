@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import FullCalendar, { type CalendarEvent } from '@/components/full-calendar';
 import { startOfMonth } from 'date-fns';
+import { EventSidebar } from '@/components/ui/event-sidebar';
 
 type GoogleEvent = {
   id?: string | null;
@@ -13,28 +14,12 @@ type GoogleEvent = {
 
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
-
-  // Calculate month offset from current month (0 = current month, 1 = next month, etc.)
-  const monthOffset = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonthNum = now.getMonth();
-    const targetYear = currentMonth.getFullYear();
-    const targetMonthNum = currentMonth.getMonth();
-
-    const offset = (targetYear - currentYear) * 12 + (targetMonthNum - currentMonthNum);
-    console.log('Month offset calculation:', {
-      currentMonth: `${currentYear}-${currentMonthNum + 1}`,
-      targetMonth: `${targetYear}-${targetMonthNum + 1}`,
-      offset,
-    });
-    return offset;
-  }, [currentMonth]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const eventsQuery = trpc.calendar.listEvents.useQuery(
     {
       range: 'month',
-      index: monthOffset,
+      date: currentMonth,
     },
     {
       placeholderData: (prev) => prev,
@@ -112,9 +97,8 @@ export default function CalendarPage() {
   }, [eventsQuery.data]);
 
   return (
-    <div className="flex w-full h-full">
-      {/* <EventSidebar /> todo */}
-      <section className="flex-1 flex flex-col min-w-0">
+    <div className="flex w-full h-full relative">
+      <section className="flex-1 flex flex-col min-w-0 w-full">
         {eventsQuery.isLoading && (
           <div className="text-sm text-muted-foreground mb-4">Loading events…</div>
         )}
@@ -124,19 +108,20 @@ export default function CalendarPage() {
         )}
 
         {!eventsQuery.isLoading && !eventsQuery.error && (
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 min-w-0 w-full">
             <FullCalendar
               events={calendarEvents}
               selectionMode="single"
               initialMonth={currentMonth}
               onMonthChange={(month) => setCurrentMonth(startOfMonth(month))}
               onSelect={(selection) => {
-                console.log('Selected date range:', selection);
+                setSelectedDate(selection.start);
               }}
             />
           </div>
         )}
       </section>
+      {selectedDate && <EventSidebar selectedDate={selectedDate} />}
     </div>
   );
 }

@@ -2,11 +2,20 @@
   "version": 2,
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "builds": [
-    { "src": "core/src/server.ts", "use": "@vercel/node" },
+    {
+      "src": "core/src/server.ts",
+      "use": "@vercel/node",
+      "config": {
+        "installCommand": "cd core && npm install"
+      }
+    },
     {
       "src": "dashboard/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist",
+        "installCommand": "cd dashboard && npm install"
+      }
     }
   ],
   "routes": [

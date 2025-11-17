@@ -9,12 +9,12 @@ export const appRouter = router({
 
 
 
-  listEvents: protectedProcedure.input(z.object({ range: z.enum(["day", "week", "month"]), index: z.number().optional() })).query(async ({ ctx, input }) => {
+  listEvents: protectedProcedure.input(z.object({ range: z.enum(["day", "week", "month"]), date: z.coerce.date() })).query(async ({ ctx, input }) => {
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
       throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
     }
-    const items = await listEvents(userAccount.id, input.range, input.index ?? 0);
+    const items = await listEvents(userAccount.id, input.range, input.date);
     return items;
   }),
 

@@ -155,8 +155,8 @@ export default function FullCalendar({
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex items-center justify-between space-x-2 shrink-0 p-4 border-b border-border">
+    <div className="w-full h-full flex min-w-0 flex-col">
+      <div className="flex w-full min-w-0 items-center justify-between space-x-2 shrink-0 p-4">
         <div>
           <h2 className="text-lg font-medium">{monthLabel()}</h2>
         </div>
@@ -169,12 +169,12 @@ export default function FullCalendar({
           </Button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-7 text-sm h-full border-t border-l border-border">
+      <div className="flex w-full min-w-0 h-full overflow-auto">
+        <div className="grid grid-cols-7 text-sm h-full border-t">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
             <div
               key={dayName}
-              className="text-center font-medium text-xs text-muted-foreground border-r border-b border-border p-2"
+              className="text-center font-medium text-xs border-r border-b border-border p-2"
             >
               {dayName}
             </div>
@@ -193,8 +193,8 @@ export default function FullCalendar({
                     onClick={() => handleDateClick(day)}
                     className={cn(
                       'text-left flex flex-col justify-start overflow-hidden h-full border-r border-b border-border',
-                      !inMonth && 'opacity-40',
-                      isInSelection(day) && 'bg-primary/10',
+                      !inMonth && 'bg-gray-100 opacity-50',
+                      isInSelection(day) && 'bg-green-50',
                     )}
                     aria-pressed={isInSelection(day)}
                   >
@@ -215,7 +215,7 @@ export default function FullCalendar({
                       {dayEvents.slice(0, 3).map((event, index) => (
                         <div
                           key={event.id || index}
-                          className="text-xs truncate rounded px-2 py-0.5 mt-1 w-full block border bg-muted/60"
+                          className="text-xs truncate rounded px-2 py-0.5 mt-1 w-full block border bg-blue-50"
                           title={event.title}
                         >
                           {event.title}

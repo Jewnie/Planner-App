@@ -31,5 +31,4 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src"],
-  "exclude": ["../core"]
 }

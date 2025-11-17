@@ -1,20 +1,19 @@
 {
   "version": 2,
   "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "installCommand": "cd core && npm install && cd ../dashboard && npm install",
+
   "builds": [
     {
       "src": "core/src/server.ts",
-      "use": "@vercel/node",
-      "config": {
-        "installCommand": "cd core && npm install"
-      }
+      "use": "@vercel/node"
     },
     {
       "src": "dashboard/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist",
-        "installCommand": "cd dashboard && npm install"
+        "distDir": "dist"
       }
     }
   ],

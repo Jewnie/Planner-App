@@ -1,10 +1,9 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../../trpc.js";
-import { auth } from "../../auth.js";
-import { google } from 'googleapis';
-import { fromNodeHeaders } from "better-auth/node";
 import { getGoogleAccountForUser } from "../user/user-repo.js";
 import { TRPCError } from "@trpc/server";
+import { getTemporalClient } from "../../workflows/temporal-client.js";
+import { getCurrentWeekEventsForAccount } from "./calendar-repo.js";
 export const appRouter = router({
   health: publicProcedure.query(() => {
     return { ok: true, time: new Date().toISOString() };
@@ -19,56 +18,99 @@ export const appRouter = router({
 
 
   fetchEvents: protectedProcedure.query(async ({ ctx }) => {
-
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
       throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
     }
 
-    // Log for debugging
-    console.log("User account scope:", userAccount.scope);
-    console.log("User account refresh token exists:", !!userAccount.refreshToken);
+    const items = await getCurrentWeekEventsForAccount(userAccount.id);
+    return { items };
+  }),
 
-    const {accessToken} = await auth.api.getAccessToken({
-        body: {
-          providerId: "google",
-          accountId: userAccount.id,
-          userId: userAccount.userId,
-        },
-        headers: fromNodeHeaders(ctx.req.headers),
-      });
+  syncCalendar: protectedProcedure
+    .input(
+      z.object({
+        timeMin: z.string().optional(), // ISO date string
+        timeMax: z.string().optional(), // ISO date string
+      }).optional()
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
+      if (!userAccount) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
+      }
 
-    // Build an OAuth2 client and set the access token so googleapis uses OAuth instead of API key
-    const oauth2 = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-    );
-    oauth2.setCredentials({
-      access_token: accessToken,
-      // include refresh token so the client can auto-refresh if needed
-      refresh_token: userAccount.refreshToken ?? undefined,
-    });
+      try {
+        const client = await getTemporalClient();
+        
+        const workflowId = `calendar-sync-${ctx.session!.user.id}-${Date.now()}`;
+        
+        // Note: We use the workflow type name as a string since workflows
+        // can only be imported in the worker context
+        const handle = await client.workflow.start('syncGoogleCalendarWorkflow', {
+          args: [{
+            accountId: userAccount.id,
+            userId: ctx.session!.user.id,
+            timeMin: input?.timeMin,
+            timeMax: input?.timeMax,
+          }],
+          taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'calendar-sync-queue',
+          workflowId,
+          // Workflow execution timeout
+          workflowExecutionTimeout: '1h',
+          // Workflow run timeout
+          workflowRunTimeout: '1h',
+        });
 
-    // Try to use the API - if it fails with insufficient permissions, we know the scope is missing
-    try {
-      const calendarClient = google.calendar({version: 'v3', auth: oauth2});
-      const events = await calendarClient.events.list({
-        calendarId: 'primary',
-        timeMin: new Date().toISOString(),
-        maxResults: 10,
-      });
-      return events.data;
-    } catch (error: unknown) {
-      const err = error as { code?: number | string; message?: string };
-      if (err.code === 403 || err.message?.includes("Insufficient Permission")) {
+        return {
+          workflowId: handle.workflowId,
+          runId: handle.firstExecutionRunId,
+          status: 'started',
+        };
+      } catch (error) {
+        console.error('Failed to start calendar sync workflow:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Provide more helpful error messages
+        if (errorMessage.includes('Failed to connect to Temporal server')) {
+          throw new TRPCError({
+            code: "SERVICE_UNAVAILABLE",
+            message: `Temporal server is not available. Please ensure the Temporal server is running. ${errorMessage}`,
+          });
+        }
+        
         throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Missing Google Calendar scope. Please reconnect Google with calendar access. (DB scope: ${userAccount.scope || "none"})`,
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to start sync: ${errorMessage}`,
         });
       }
-      throw error;
-    }
-  }),
+    }),
+
+  getSyncStatus: protectedProcedure
+    .input(z.object({ workflowId: z.string() }))
+    .query(async ({ input }) => {
+      try {
+        const client = await getTemporalClient();
+        const handle = client.workflow.getHandle(input.workflowId);
+        
+        const description = await handle.describe();
+        const result = await handle.result().catch(() => null);
+
+        return {
+          workflowId: description.workflowId,
+          status: description.status.name,
+          runId: description.runId,
+          startTime: description.startTime?.toISOString(),
+          closeTime: description.closeTime?.toISOString(),
+          result: result || undefined,
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to get sync status: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    }),
 
 
 });

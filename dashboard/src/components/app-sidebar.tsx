@@ -1,5 +1,5 @@
-import { Calendar, Home, Settings } from "lucide-react"
-import { Link, useLocation } from "react-router-dom"
+import { Calendar, Home, Settings } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 import {
   Sidebar,
@@ -10,15 +10,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { NavUser } from "./nav-user"
-import { authClient } from "@/lib/auth-client"
+} from '@/components/ui/sidebar';
+import { NavUser } from './nav-user';
+import { authClient } from '@/lib/auth-client';
 
 // Menu items.
 const items = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
+    title: 'Dashboard',
+    url: '/dashboard',
     icon: Home,
     exact: true,
   },
@@ -28,8 +28,8 @@ const items = [
   //   icon: Inbox,
   // },
   {
-    title: "Calendar",
-    url: "/dashboard/calendar",
+    title: 'Calendar',
+    url: '/dashboard/calendar',
     icon: Calendar,
   },
   // {
@@ -38,26 +38,25 @@ const items = [
   //   icon: Search,
   // },
   {
-    title: "Settings",
-    url: "/dashboard/settings",
+    title: 'Settings',
+    url: '/dashboard/settings',
     icon: Settings,
   },
-]
+];
 
 export function AppSidebar() {
-  const location = useLocation()
-  const sessionQuery = authClient.useSession()
-  const user = sessionQuery.data?.user
-  
+  const location = useLocation();
+  const sessionQuery = authClient.useSession();
+  const user = sessionQuery.data?.user;
+
   // ProtectedRoute already handles authentication, so no need to redirect here
   // This prevents redirects during page refresh when session is still loading
-
 
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>Plnnr-app</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -81,7 +80,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      {user && <NavUser user={{name:user.name, email:user.email, avatar:user.image ?? undefined}} />}
+      {user && (
+        <NavUser user={{ name: user.name, email: user.email, avatar: user.image ?? undefined }} />
+      )}
     </Sidebar>
-  )
+  );
 }

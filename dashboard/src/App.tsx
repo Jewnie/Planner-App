@@ -1,8 +1,7 @@
 import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
 
 import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import HomePage from '@/pages/dashboard';
 import InboxPage from '@/pages/inbox';

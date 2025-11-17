@@ -49,9 +49,6 @@ export function AppSidebar() {
   const sessionQuery = authClient.useSession();
   const user = sessionQuery.data?.user;
 
-  // ProtectedRoute already handles authentication, so no need to redirect here
-  // This prevents redirects during page refresh when session is still loading
-
   return (
     <Sidebar>
       <SidebarContent>

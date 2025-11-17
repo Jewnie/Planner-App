@@ -1,19 +1,23 @@
 {
   "version": 2,
-  "installCommand": "npm install",
-
-  "buildCommand": "npm run build",
-
-  "outputDirectory": "dashboard/dist",
-
-  "rewrites": [
+  "installCommand": "npm install --prefix core && npm install --prefix dashboard",
+  "builds": [
     {
-      "source": "/api/:path*",
-      "destination": "/core/src/server.js"
+      "src": "core/src/server.ts",
+      "use": "@vercel/node"
     },
     {
-      "source": "/trpc/:path*",
-      "destination": "/core/src/server.js"
+      "src": "dashboard/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/core/src/server.ts" },
+    { "src": "/trpc/(.*)", "dest": "/core/src/server.ts" },
+    { "src": "/(.*\\..+)", "dest": "/dashboard/$1" },
+    { "src": "/(.*)", "dest": "/dashboard/index.html" }
   ]
 }

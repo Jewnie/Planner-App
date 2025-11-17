@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
     "start": "concurrently -n server,worker -c blue,green \"tsx src/server.ts\" \"tsx src/workflows/worker.ts\"",
     "dev": "concurrently -n server,worker -c blue,green \"nodemon --watch src --ext ts --exec 'tsx src/server.ts'\" \"nodemon --watch src/workflows --ext ts --exec 'tsx src/workflows/worker.ts'\"",
     "server": "tsx src/server.ts",

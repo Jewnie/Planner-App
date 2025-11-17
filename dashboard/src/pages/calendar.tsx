@@ -1,89 +1,140 @@
+import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
+import FullCalendar, { type CalendarEvent } from '@/components/full-calendar';
+import { startOfMonth } from 'date-fns';
+
+type GoogleEvent = {
+  id?: string | null;
+  summary?: string | null;
+  location?: string | null;
+  start?: { dateTime?: string | null; date?: string | null } | null;
+  end?: { dateTime?: string | null; date?: string | null } | null;
+};
 
 export default function CalendarPage() {
-  const healthQuery = trpc.calendar.health.useQuery();
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
 
-  const eventsQuery = trpc.calendar.fetchEvents.useQuery();
+  // Calculate month offset from current month (0 = current month, 1 = next month, etc.)
+  const monthOffset = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthNum = now.getMonth();
+    const targetYear = currentMonth.getFullYear();
+    const targetMonthNum = currentMonth.getMonth();
+
+    const offset = (targetYear - currentYear) * 12 + (targetMonthNum - currentMonthNum);
+    console.log('Month offset calculation:', {
+      currentMonth: `${currentYear}-${currentMonthNum + 1}`,
+      targetMonth: `${targetYear}-${targetMonthNum + 1}`,
+      offset,
+    });
+    return offset;
+  }, [currentMonth]);
+
+  const eventsQuery = trpc.calendar.listEvents.useQuery(
+    {
+      range: 'month',
+      index: monthOffset,
+    },
+    {
+      placeholderData: (prev) => prev,
+    },
+  );
+
+  console.log('Events query state:', {
+    isLoading: eventsQuery.isLoading,
+    isError: eventsQuery.isError,
+    error: eventsQuery.error,
+    dataLength: eventsQuery.data?.length,
+  });
+
+  // Transform Google Calendar events to FullCalendar format
+  const calendarEvents = useMemo<CalendarEvent[]>(() => {
+    if (!eventsQuery.data || !Array.isArray(eventsQuery.data)) {
+      console.log('No events data or not an array:', eventsQuery.data);
+      return [];
+    }
+
+    const items = (eventsQuery.data as unknown as GoogleEvent[]) || [];
+    console.log('Raw events from API:', items);
+    const events: CalendarEvent[] = [];
+
+    for (const event of items) {
+      const startRaw = event?.start?.dateTime || event?.start?.date;
+      const endRaw = event?.end?.dateTime || event?.end?.date;
+
+      if (!startRaw) {
+        console.warn('Event missing start date:', event);
+        continue;
+      }
+
+      // Parse dates - handle both ISO datetime strings and date-only strings
+      let start: Date;
+      let end: Date;
+
+      try {
+        start = new Date(startRaw);
+        if (isNaN(start.getTime())) {
+          console.warn('Invalid start date:', startRaw);
+          continue;
+        }
+
+        if (endRaw) {
+          end = new Date(endRaw);
+          if (isNaN(end.getTime())) {
+            console.warn('Invalid end date:', endRaw);
+            end = start;
+          }
+        } else {
+          end = start;
+        }
+
+        // For all-day events (date-only), ensure end date is at end of day
+        if (event?.start?.date && !event?.start?.dateTime) {
+          // All-day event - end should be end of the end date
+          end = new Date(end);
+          end.setHours(23, 59, 59, 999);
+        }
+
+        events.push({
+          id: event.id || `event-${Math.random()}`,
+          title: event.summary || 'Untitled event',
+          start,
+          end,
+        });
+      } catch (error) {
+        console.error('Error parsing event dates:', error, event);
+        continue;
+      }
+    }
+
+    return events;
+  }, [eventsQuery.data]);
 
   return (
-    <div className="flex w-full">
+    <div className="flex w-full h-full">
       {/* <EventSidebar /> todo */}
-      <section className="flex-1 rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-card-foreground">Calendar</h2>
-        <div className="text-sm text-muted-foreground mb-4">
-          {healthQuery.isLoading
-            ? 'Checking API…'
-            : healthQuery.error
-              ? 'API error'
-              : `API ok at ${healthQuery.data?.time}`}
-        </div>
-
+      <section className="flex-1 flex flex-col min-w-0">
         {eventsQuery.isLoading && (
-          <div className="text-sm text-muted-foreground">Loading events…</div>
+          <div className="text-sm text-muted-foreground mb-4">Loading events…</div>
         )}
 
-        {eventsQuery.error && <div className="text-sm text-red-600">Failed to load events.</div>}
+        {eventsQuery.error && (
+          <div className="text-sm text-red-600 mb-4">Failed to load events.</div>
+        )}
 
         {!eventsQuery.isLoading && !eventsQuery.error && (
-          <>
-            {!eventsQuery.data?.items?.length ? (
-              <div className="text-sm text-muted-foreground">No upcoming events.</div>
-            ) : (
-              <ul className="divide-y divide-border rounded-md border">
-                {(() => {
-                  type GoogleEvent = {
-                    id?: string | null;
-                    summary?: string | null;
-                    location?: string | null;
-                    start?: { dateTime?: string | null; date?: string | null } | null;
-                    end?: { dateTime?: string | null; date?: string | null } | null;
-                  };
-                  const items = (eventsQuery.data!.items as unknown as GoogleEvent[]) || [];
-                  return items.map((evt) => {
-                    const startRaw = evt?.start?.dateTime || evt?.start?.date || undefined;
-                    const endRaw = evt?.end?.dateTime || evt?.end?.date || undefined;
-                    const start = startRaw ? new Date(startRaw) : null;
-                    const end = endRaw ? new Date(endRaw) : null;
-                    const format = (d: Date | null) =>
-                      d
-                        ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : '—';
-                    const whenStart = format(start);
-                    const whenEnd = format(end);
-                    return (
-                      <li
-                        key={evt.id ?? `${whenStart}-${Math.random()}`}
-                        className="p-3 flex items-start gap-3"
-                      >
-                        <div className="h-2 w-2 rounded-full bg-primary mt-2" />
-                        <div className="flex-1">
-                          <div className="font-medium text-card-foreground">
-                            {evt.summary ?? 'Untitled event'}
-                          </div>
-                          <dl className="mt-1 grid gap-1 text-xs text-muted-foreground">
-                            <div className="flex gap-2">
-                              <dt className="min-w-12 text-foreground/70">Starts:</dt>
-                              <dd>{whenStart}</dd>
-                            </div>
-                            <div className="flex gap-2">
-                              <dt className="min-w-12 text-foreground/70">Ends:</dt>
-                              <dd>{whenEnd}</dd>
-                            </div>
-                            {evt.location ? (
-                              <div className="flex gap-2">
-                                <dt className="min-w-12 text-foreground/70">Where:</dt>
-                                <dd>{evt.location}</dd>
-                              </div>
-                            ) : null}
-                          </dl>
-                        </div>
-                      </li>
-                    );
-                  });
-                })()}
-              </ul>
-            )}
-          </>
+          <div className="flex-1 min-h-0">
+            <FullCalendar
+              events={calendarEvents}
+              selectionMode="single"
+              initialMonth={currentMonth}
+              onMonthChange={(month) => setCurrentMonth(startOfMonth(month))}
+              onSelect={(selection) => {
+                console.log('Selected date range:', selection);
+              }}
+            />
+          </div>
         )}
       </section>
     </div>

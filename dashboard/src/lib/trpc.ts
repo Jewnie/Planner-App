@@ -1,13 +1,12 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink, loggerLink } from "@trpc/client";
-// Snapshot type is available at "@/types/app-router" if needed in the future.
 
-// Fully erase types for the runtime tRPC react instance to avoid build-time coupling
-// to server-only types during dashboard build on Vercel.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const trpc: any =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (createTRPCReact as unknown as any)();
+// Import the AppRouter type from the backend (type-only import, erased at runtime)
+// Type-only imports are safe for production builds as they don't create runtime dependencies
+import type { AppRouter } from "../../../core/src/routers/index.js";
+
+// Create typed tRPC React hooks with full type inference
+export const trpc = createTRPCReact<AppRouter>();
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "";
 

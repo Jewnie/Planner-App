@@ -1,30 +1,21 @@
 import { z } from "zod";
-import { router, publicProcedure, protectedProcedure } from "../../trpc.js";
+import { router, protectedProcedure } from "../../trpc.js";
 import { getGoogleAccountForUser } from "../user/user-repo.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { getCurrentWeekEventsForAccount } from "./calendar-repo.js";
+import { listEvents } from "./calendar-repo.js";
 export const appRouter = router({
-  health: publicProcedure.query(() => {
-    return { ok: true, time: new Date().toISOString() };
-  }),
-  me: protectedProcedure.query(({ ctx }) => {
-    return { user: ctx.session?.user ?? null };
-  }),
-  echo: publicProcedure.input(z.object({ message: z.string() })).query(({ input }) => {
-    return { message: input.message };
-  }),
+ 
 
 
 
-  fetchEvents: protectedProcedure.query(async ({ ctx }) => {
+  listEvents: protectedProcedure.input(z.object({ range: z.enum(["day", "week", "month"]), index: z.number().optional() })).query(async ({ ctx, input }) => {
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
       throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
     }
-
-    const items = await getCurrentWeekEventsForAccount(userAccount.id);
-    return { items };
+    const items = await listEvents(userAccount.id, input.range, input.index ?? 0);
+    return items;
   }),
 
   syncCalendar: protectedProcedure

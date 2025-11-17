@@ -18,7 +18,7 @@ export default function SettingsPage() {
         error: undefined,
       });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       console.error('Sync failed:', error);
       setSyncStatus({
         error: error.message || 'Failed to start sync',

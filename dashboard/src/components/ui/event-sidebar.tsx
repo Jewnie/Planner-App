@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sidebar, SidebarContent, SidebarHeader } from './sidebar';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from './card';

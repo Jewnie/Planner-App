@@ -1,4 +1,11 @@
 {
+  "private": true,
+
+  "workspaces": [
+    "core",
+    "dashboard"
+  ],
+
   "devDependencies": {
     "@eslint/js": "^9.13.0",
     "@types/node": "^24.10.0",
@@ -12,10 +19,13 @@
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.46.4"
   },
+
   "scripts": {
     "lint": "eslint \"{core,dashboard}/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"{core,dashboard}/**/*.{ts,tsx}\" --fix",
     "format": "prettier --write \"{core,dashboard}/**/*.{ts,tsx,js,jsx,json,css,md,html}\"",
-    "format:check": "prettier --check \"{core,dashboard}/**/*.{ts,tsx,js,jsx,json,css,md,html}\""
+    "format:check": "prettier --check \"{core,dashboard}/**/*.{ts,tsx,js,jsx,json,css,md,html}\"",
+    
+    "build": "npm run build --workspace core && npm run build --workspace dashboard"
   }
 }

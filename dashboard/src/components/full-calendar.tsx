@@ -170,7 +170,7 @@ export default function FullCalendar({
         </div>
       </div>
       <div className="flex w-full min-w-0 h-full overflow-auto">
-        <div className="grid grid-cols-7 text-sm h-full border-t">
+        <div className="grid grid-cols-7 w-full text-sm h-full border-t">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
             <div
               key={dayName}

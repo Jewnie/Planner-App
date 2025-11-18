@@ -193,7 +193,7 @@ export default function FullCalendar({
                     key={isoDate}
                     onClick={() => handleDateClick(day)}
                     className={cn(
-                      'text-left flex flex-col justify-start overflow-hidden min-h-[100px] border-r border-b nth-7:border-l-4 border-border',
+                      'text-left flex flex-col justify-start overflow-hidden min-h-[100px] border-r border-b nth-[7n]:border-r-0 border-border',
                       weekIndex === 0 && 'border-t',
                       !inMonth && 'bg-gray-100 opacity-50',
                       isInSelection(day) && 'bg-green-50',

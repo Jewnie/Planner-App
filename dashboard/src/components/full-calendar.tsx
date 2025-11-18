@@ -157,29 +157,30 @@ export default function FullCalendar({
   return (
     <div className="w-full h-full flex min-w-0 flex-col">
       <div className="flex w-full min-w-0 items-center justify-between space-x-2 shrink-0 p-4">
-        <div>
-          <h2 className="text-lg font-medium">{monthLabel()}</h2>
-        </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={handlePrev} aria-label="Previous month">
+          <Button variant="ghost" size="sm" onClick={handlePrev} aria-label="Previous month">
             ‹
           </Button>
-          <Button size="sm" onClick={handleNext} aria-label="Next month">
+          <h2 className="text-lg w-36 text-center font-medium">{monthLabel()}</h2>
+          <Button variant="ghost" size="sm" onClick={handleNext} aria-label="Next month">
             ›
           </Button>
         </div>
+        <div className="flex items-center gap-2"></div>
       </div>
-      <div className="flex w-full min-w-0 h-full overflow-auto">
-        <div className="grid grid-cols-7 w-full text-sm h-full border-t">
+      <div className="flex w-full min-w-0 h-full overflow-auto flex-col">
+        <div className="grid grid-cols-7 w-full text-sm border-t shrink-0" style={{ gap: 0 }}>
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
             <div
               key={dayName}
-              className="text-center font-medium text-xs border-r border-b border-border p-2"
+              className="flex items-center justify-center font-medium text-xs border-r border-border px-2 last:border-r-0"
+              style={{ height: '2rem', minHeight: '2rem', maxHeight: '2rem', lineHeight: '2rem' }}
             >
               {dayName}
             </div>
           ))}
-
+        </div>
+        <div className="grid grid-cols-7 w-full text-sm flex-1 " style={{ gap: 0, marginTop: 0 }}>
           {monthGrid.map((week, weekIndex) => (
             <React.Fragment key={weekIndex}>
               {week.map((day) => {
@@ -192,7 +193,8 @@ export default function FullCalendar({
                     key={isoDate}
                     onClick={() => handleDateClick(day)}
                     className={cn(
-                      'text-left flex flex-col justify-start overflow-hidden h-full border-r border-b border-border',
+                      'text-left flex flex-col justify-start overflow-hidden min-h-[100px] border-r border-b nth-7:border-l-4 border-border',
+                      weekIndex === 0 && 'border-t',
                       !inMonth && 'bg-gray-100 opacity-50',
                       isInSelection(day) && 'bg-green-50',
                     )}

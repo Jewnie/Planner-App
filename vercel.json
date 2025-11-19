@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "installCommand": "npm install --prefix core && npm install --prefix dashboard",
+  "installCommand": "npm install",
   "builds": [
     {
       "src": "core/src/server.ts",
@@ -10,7 +10,9 @@
       "src": "dashboard/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist"
+        "distDir": "dist",
+        "installCommand": "npm install",
+        "buildCommand": "cd dashboard && npm run build"
       }
     }
   ],

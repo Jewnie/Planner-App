@@ -188,15 +188,20 @@ export default function FullCalendar({
                 const isoDate = format(day, 'yyyy-MM-dd');
                 const dayEvents = eventsByDate[isoDate] || [];
 
+                // Ensure all classes are always present as string literals for Tailwind scanning
+                const borderTopClass = weekIndex === 0 ? 'border-t' : '';
+                const monthClass = !inMonth ? 'bg-gray-100 opacity-50' : '';
+                const selectionClass = isInSelection(day) ? 'bg-green-50' : '';
+
                 return (
                   <button
                     key={isoDate}
                     onClick={() => handleDateClick(day)}
                     className={cn(
-                      'text-left flex flex-col justify-start overflow-hidden min-h-[100px] border-r border-b nth-[7n]:border-r-0 border-border',
-                      weekIndex === 0 && 'border-t',
-                      !inMonth && 'bg-gray-100 opacity-50',
-                      isInSelection(day) && 'bg-green-50',
+                      'text-left flex flex-col justify-start overflow-hidden min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
+                      borderTopClass,
+                      monthClass,
+                      selectionClass,
                     )}
                     aria-pressed={isInSelection(day)}
                   >
@@ -204,7 +209,7 @@ export default function FullCalendar({
                       <div
                         className={cn(
                           'text-sm font-semibold',
-                          isSameDay(day, new Date()) && 'underline',
+                          isSameDay(day, new Date()) ? 'underline' : '',
                         )}
                       >
                         {format(day, 'd')}

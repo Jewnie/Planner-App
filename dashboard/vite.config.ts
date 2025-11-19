@@ -18,6 +18,9 @@ export default defineConfig({
   },
   build: {
     // Ensure this matches your vercel.json 'distDir'
-    outDir: 'dist', 
+    outDir: 'dist',
+    // Ensure CSS is properly extracted and not code-split
+    // This helps with class detection in production
+    cssCodeSplit: false,
   }
 });

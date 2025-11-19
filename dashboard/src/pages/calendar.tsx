@@ -143,7 +143,11 @@ export default function CalendarPage() {
         </div>
       </div>
       {isSidebarOpen && (
-        <EventSidebar selectedDate={selectedDate} onClose={() => setIsSidebarOpen(false)} />
+        <EventSidebar
+          selectedDate={selectedDate}
+          selectedCalendarIds={Array.from(selectedCalendarIds)}
+          onClose={() => setIsSidebarOpen(false)}
+        />
       )}
     </div>
   );

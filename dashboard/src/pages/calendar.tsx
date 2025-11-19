@@ -16,15 +16,10 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const eventsQuery = trpc.calendar.listEvents.useQuery(
-    {
-      range: 'month',
-      date: currentMonth,
-    },
-    {
-      placeholderData: (prev) => prev,
-    },
-  );
+  const eventsQuery = trpc.calendar.listEvents.useQuery({
+    range: 'month',
+    date: currentMonth,
+  });
 
   console.log('Events query state:', {
     isLoading: eventsQuery.isLoading,

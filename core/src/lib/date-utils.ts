@@ -25,3 +25,17 @@ export function parseDateInput(val: string | Date): Date {
   return new Date(Date.UTC(val.getUTCFullYear(), val.getUTCMonth(), val.getUTCDate()));
 }
 
+/**
+ * Formats a Date object to YYYY-MM-DD string format using UTC components.
+ * This ensures consistent date formatting regardless of timezone.
+ * 
+ * @param date - A Date object
+ * @returns A string in YYYY-MM-DD format
+ */
+export function formatDateToYYYYMMDD(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+

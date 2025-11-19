@@ -72,6 +72,7 @@ export async function getCalendarsForProvider(providerId: string) {
 export function transformEventToApiFormat(event: InferSelectModel<typeof events>) {
   return {
     id: event.providerEventId,
+    calendarId: event.calendarId,
     summary: event.title,
     description: event.description || null,
     location: event.location || null,
@@ -95,7 +96,7 @@ export function transformEventToApiFormat(event: InferSelectModel<typeof events>
  * @param range - The range type (day, week, or month) to calculate for each date
  * @param dateStrings - Array of date strings in YYYY-MM-DD format
  */
-export const listEvents = async (
+export const listEventsByAccountId = async (
   accountId: string, 
   range: "day" | "week" | "month", 
   dateStrings: string[]
@@ -178,7 +179,7 @@ export const listEvents = async (
 export async function getCurrentWeekEventsForAccount(accountId: string) {
   const today = new Date();
   const dateString = today.toISOString().split('T')[0];
-  return listEvents(accountId, "week", [dateString]);
+  return listEventsByAccountId(accountId, "week", [dateString]);
 }
 
 /**
@@ -187,6 +188,6 @@ export async function getCurrentWeekEventsForAccount(accountId: string) {
 export async function getCurrentMonthEventsForAccount(accountId: string) {
   const today = new Date();
   const dateString = today.toISOString().split('T')[0];
-  return listEvents(accountId, "month", [dateString]);
+  return listEventsByAccountId(accountId, "month", [dateString]);
 }
 

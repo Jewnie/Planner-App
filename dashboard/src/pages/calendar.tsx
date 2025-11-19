@@ -6,7 +6,8 @@ import { EventSidebar } from '@/components/ui/event-sidebar';
 
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Calculate dates for previous month, current month, and next month
   // This ensures we fetch events for all months that might be visible in the calendar grid
@@ -79,6 +80,7 @@ export default function CalendarPage() {
 
         events.push({
           id: event.id || `event-${Math.random()}`,
+          calendarId: event.calendarId,
           title: event.summary || 'Untitled event',
           start,
           end,
@@ -106,12 +108,15 @@ export default function CalendarPage() {
               }}
               onSelect={(selection) => {
                 setSelectedDate(selection.start);
+                setIsSidebarOpen(true);
               }}
             />
           </div>
         }
       </section>
-      {selectedDate && <EventSidebar selectedDate={selectedDate} />}
+      {isSidebarOpen && (
+        <EventSidebar selectedDate={selectedDate} onClose={() => setIsSidebarOpen(false)} />
+      )}
     </div>
   );
 }

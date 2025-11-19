@@ -17,10 +17,12 @@ import {
 // shadcn/ui primitives (assume you have shadcn/ui installed)
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getBackgroundColor } from '@/utils/colors';
 
 // --- Types ---
 export interface CalendarEvent {
   id: string | number;
+  calendarId?: string;
   title: string;
   start: Date | string;
   end?: Date | string;
@@ -45,17 +47,17 @@ export default function FullCalendar({
   locale = undefined,
 }: FullCalendarProps) {
   const [cursorMonth, setCursorMonth] = useState(() => startOfMonth(initialMonth));
-  const [selectedStart, setSelectedStart] = useState<Date | null>(null);
+  const [selectedStart, setSelectedStart] = useState<Date | null>(() => new Date());
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null);
 
   const monthGrid = useMemo(() => {
     const monthStart = startOfMonth(cursorMonth);
     const monthEnd = endOfMonth(cursorMonth);
 
-    // Always start from the Sunday of the week that contains the month start
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday start
-    // Always end on the Saturday of the week that contains the month end
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 }); // Saturday end
+    // Always start from the Monday of the week that contains the month start
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday start
+    // Always end on the Sunday of the week that contains the month end
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 }); // Sunday end
 
     // Calculate the number of days needed to show all days of the month
     const totalDays = differenceInDays(gridEnd, gridStart) + 1; // +1 to include both start and end
@@ -184,7 +186,7 @@ export default function FullCalendar({
       </div>
       <div className="flex w-full min-w-0 h-full overflow-auto flex-col">
         <div className="grid grid-cols-7 w-full text-sm border-t shrink-0" style={{ gap: 0 }}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName) => (
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
             <div
               key={dayName}
               className="flex items-center justify-center font-medium text-xs border-r border-border px-2 last:border-r-0"
@@ -201,11 +203,14 @@ export default function FullCalendar({
                 const inMonth = isSameMonth(day, cursorMonth);
                 const isoDate = format(day, 'yyyy-MM-dd');
                 const dayEvents = eventsByDate[isoDate] || [];
+                const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
                 // Ensure all classes are always present as string literals for Tailwind scanning
                 const borderTopClass = weekIndex === 0 ? 'border-t' : '';
                 const monthClass = !inMonth ? 'bg-gray-100 opacity-50' : '';
                 const selectionClass = isInSelection(day) ? 'bg-green-50' : '';
+                const weekendClass = isWeekend && inMonth ? 'bg-blue-50' : '';
 
                 return (
                   <button
@@ -216,32 +221,36 @@ export default function FullCalendar({
                       borderTopClass,
                       monthClass,
                       selectionClass,
+                      weekendClass,
                     )}
                     aria-pressed={isInSelection(day)}
                   >
                     <div className="flex items-start justify-between p-2">
-                      <div
-                        className={cn(
-                          'text-sm font-semibold',
-                          isSameDay(day, new Date()) ? 'underline' : '',
-                        )}
-                      >
-                        {format(day, 'd')}
+                      <div className={cn('text-sm font-semibold')}>{format(day, 'd')}</div>
+                      <div className="text-xs font-medium">
+                        {isSameDay(day, new Date()) ? 'Today' : ''}
                       </div>
-                      <div className="text-xs text-muted-foreground">{format(day, 'LLL')}</div>
                     </div>
 
                     <div className="px-2 pb-2 flex-1 w-full overflow-hidden">
                       {/* show up to 3 events as small pills (Untitled-style) */}
-                      {dayEvents.slice(0, 3).map((event, index) => (
-                        <div
-                          key={event.id || index}
-                          className="text-xs truncate rounded px-2 py-0.5 mt-1 w-full block border bg-blue-50"
-                          title={event.title}
-                        >
-                          {event.title}
-                        </div>
-                      ))}
+                      {dayEvents.slice(0, 3).map((event, index) => {
+                        const calendarId =
+                          event.calendarId || event.id?.toString() || `event-${index}`;
+                        const backgroundColor = getBackgroundColor(calendarId);
+                        return (
+                          <div
+                            key={event.id || index}
+                            className={cn(
+                              'text-xs truncate rounded px-2 py-0.5 mt-1 w-full block border',
+                              backgroundColor,
+                            )}
+                            title={event.title}
+                          >
+                            {event.title}
+                          </div>
+                        );
+                      })}
                       {dayEvents.length > 3 && (
                         <div className="text-xs mt-1 text-muted-foreground truncate">
                           +{dayEvents.length - 3} more

@@ -2,6 +2,7 @@ import { Sidebar, SidebarContent, SidebarHeader } from './sidebar';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
 import { Separator } from './separator';
+import { Button } from './button';
 import { format, isSameDay } from 'date-fns';
 import { Spinner } from './spinner';
 import type { AppRouter } from '@/types/app-router';
@@ -40,7 +41,7 @@ function formatEventTime(event: CalendarEvent): string {
   }
 }
 
-export function EventSidebar(props: { selectedDate: Date | null }) {
+export function EventSidebar(props: { selectedDate: Date | null; onClose?: () => void }) {
   const selectedDate = props.selectedDate ?? new Date();
   // Format date as YYYY-MM-DD string to avoid timezone issues
   // This ensures the server interprets the date correctly regardless of client timezone
@@ -55,11 +56,37 @@ export function EventSidebar(props: { selectedDate: Date | null }) {
 
   return (
     <Sidebar className="w-96" side="right">
-      <SidebarContent>
+      <SidebarContent className="bg-white">
         <SidebarHeader>
-          <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold">Events</h2>
-            <p className="text-sm text-muted-foreground">{dateLabel}</p>
+          <div className="flex items-start justify-between w-full">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-semibold">Events</h2>
+              <p className="text-sm text-muted-foreground">{dateLabel}</p>
+            </div>
+            {props.onClose && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={props.onClose}
+                aria-label="Close sidebar"
+                className="shrink-0"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </Button>
+            )}
           </div>
         </SidebarHeader>
 

@@ -1,33 +1,47 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
 /**
+ * Convert a regular Date to UTCDate for UTC-aware calculations
+ */
+function toUTCDate(date: Date): UTCDate {
+  return new UTCDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds());
+}
+
+/**
  * Calculate the start and end of a month based on index offset from current month
+ * Uses UTC to avoid timezone issues
  */
 export const getMonthRange = (date: Date) => {
-  const monthStart = startOfMonth(date);
-  const monthEnd = endOfMonth(date);
+  const utcDate = toUTCDate(date);
+  const monthStart = startOfMonth(utcDate);
+  const monthEnd = endOfMonth(utcDate);
   return { monthStart, monthEnd };
 }
 
 /**
  * Calculate the start and end of a week based on index offset from current week
+ * Uses UTC to avoid timezone issues
  */
 export function getWeekRange(date: Date) {
-  const weekStart = startOfWeek(date, { weekStartsOn: 1 }); // Monday
-  const weekEnd = endOfWeek(date, { weekStartsOn: 1 }); // Sunday
+  const utcDate = toUTCDate(date);
+  const weekStart = startOfWeek(utcDate, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(utcDate, { weekStartsOn: 1 }); // Sunday
   return { weekStart, weekEnd };
 }
 
 /**
  * Calculate the start and end of a day based on index offset from current day
+ * Uses UTC to avoid timezone issues
  */
 export function getDayRange(date: Date) {
-  const dayStart = startOfDay(date);
-  const dayEnd = endOfDay(date);
+  const utcDate = toUTCDate(date);
+  const dayStart = startOfDay(utcDate);
+  const dayEnd = endOfDay(utcDate);
   return { dayStart, dayEnd };
 }
 

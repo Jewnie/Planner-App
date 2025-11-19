@@ -18,6 +18,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@date-fns/utc": "^2.1.1",
     "@temporalio/activity": "^1.13.2",
     "@temporalio/client": "^1.13.2",
     "@temporalio/worker": "^1.13.2",

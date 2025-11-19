@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import FullCalendar, { type CalendarEvent } from '@/components/full-calendar';
-import { startOfMonth } from 'date-fns';
+import { startOfMonth, format } from 'date-fns';
 import { EventSidebar } from '@/components/ui/event-sidebar';
 
 type GoogleEvent = {
@@ -15,28 +15,22 @@ type GoogleEvent = {
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // Send date as YYYY-MM-DD string to avoid timezone issues
+  // This ensures the server interprets the date correctly regardless of client timezone
+  const dateString = format(currentMonth, 'yyyy-MM-dd');
 
   const eventsQuery = trpc.calendar.listEvents.useQuery({
     range: 'month',
-    date: currentMonth,
-  });
-
-  console.log('Events query state:', {
-    isLoading: eventsQuery.isLoading,
-    isError: eventsQuery.isError,
-    error: eventsQuery.error,
-    dataLength: eventsQuery.data?.length,
+    date: dateString,
   });
 
   // Transform Google Calendar events to FullCalendar format
   const calendarEvents = useMemo<CalendarEvent[]>(() => {
     if (!eventsQuery.data || !Array.isArray(eventsQuery.data)) {
-      console.log('No events data or not an array:', eventsQuery.data);
       return [];
     }
 
     const items = (eventsQuery.data as unknown as GoogleEvent[]) || [];
-    console.log('Raw events from API:', items);
     const events: CalendarEvent[] = [];
 
     for (const event of items) {
@@ -108,7 +102,9 @@ export default function CalendarPage() {
               events={calendarEvents}
               selectionMode="single"
               initialMonth={currentMonth}
-              onMonthChange={(month) => setCurrentMonth(startOfMonth(month))}
+              onMonthChange={(month) => {
+                setCurrentMonth(startOfMonth(month));
+              }}
               onSelect={(selection) => {
                 setSelectedDate(selection.start);
               }}

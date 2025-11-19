@@ -81,7 +81,7 @@ export function EventSidebar(props: { selectedDate: Date | null }) {
 
           {!dayEventsResult.isLoading && !dayEventsResult.error && events.length > 0 && (
             <div className="flex flex-col gap-3">
-              {events.map((event) => (
+              {events.map((event: CalendarEvent) => (
                 <Card key={event.id || `event-${Math.random()}`} className="overflow-hidden">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base leading-tight">

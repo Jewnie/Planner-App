@@ -99,7 +99,8 @@ export function transformEventToApiFormat(event: InferSelectModel<typeof events>
 export const listEventsByAccountId = async (
   accountId: string, 
   range: "day" | "week" | "month", 
-  dateStrings: string[]
+  dateStrings: string[],
+  filterCalendarIds?: string[] 
 ) => {
   // Get the calendar provider for this account
   const provider = await getCalendarProviderForAccount(accountId);
@@ -113,7 +114,11 @@ export const listEventsByAccountId = async (
     return [];
   }
 
-  const calendarIds = userCalendars.map(cal => cal.id);
+
+  
+  if (filterCalendarIds?.length === 0) {
+    return [];
+  }
   
   // Parse each date string and calculate the appropriate range for each
   const dateRanges: Array<{ startDate: Date; endDate: Date }> = [];
@@ -164,7 +169,7 @@ export const listEventsByAccountId = async (
     .from(events)
     .where(
       and(
-        inArray(events.calendarId, calendarIds),
+        inArray(events.calendarId, filterCalendarIds || []),
         or(...rangeConditions)
       )
     );

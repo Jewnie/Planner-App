@@ -63,6 +63,24 @@ const ALL_BG_COLORS = [
   'bg-amber-100',
   'bg-lime-100',
   'bg-sky-100',
+  // Checked state variants for checkboxes
+  'data-[state=checked]:bg-blue-100',
+  'data-[state=checked]:bg-green-100',
+  'data-[state=checked]:bg-red-100',
+  'data-[state=checked]:bg-yellow-100',
+  'data-[state=checked]:bg-purple-100',
+  'data-[state=checked]:bg-pink-100',
+  'data-[state=checked]:bg-indigo-100',
+  'data-[state=checked]:bg-teal-100',
+  'data-[state=checked]:bg-orange-100',
+  'data-[state=checked]:bg-cyan-100',
+  'data-[state=checked]:bg-emerald-100',
+  'data-[state=checked]:bg-violet-100',
+  'data-[state=checked]:bg-fuchsia-100',
+  'data-[state=checked]:bg-rose-100',
+  'data-[state=checked]:bg-amber-100',
+  'data-[state=checked]:bg-lime-100',
+  'data-[state=checked]:bg-sky-100',
 ] as const;
 void ALL_BG_COLORS; // Prevents unused variable warning while keeping classes visible to Tailwind
 
@@ -72,14 +90,14 @@ void ALL_BG_COLORS; // Prevents unused variable warning while keeping classes vi
  * 
  * @param str - The string to generate a color for
  * @param variant - Optional variant: 'bg' for background, 'text' for text, 'border' for border (default: 'bg')
- * @returns A Tailwind color class string (e.g., 'bg-blue-500', 'text-green-300')
+ * @returns A Tailwind color class string (e.g., 'bg-blue-100', 'text-green-100')
  * 
  * @example
- * getColorFromString('calendar-1') // returns 'bg-blue-500'
- * getColorFromString('calendar-1', 'text') // returns 'text-blue-500'
- * getColorFromString('event-123') // returns 'bg-green-300'
+ * getDeterministicColor('calendar-1') // returns 'bg-blue-100'
+ * getDeterministicColor('calendar-1', 'text') // returns 'text-blue-100'
+ * getDeterministicColor('event-123', 'border') // returns 'border-green-100'
  */
-export function getColorFromString(
+export function getDeterministicColor(
   str: string,
   variant: 'bg' | 'text' | 'border' = 'bg'
 ): string {
@@ -94,40 +112,7 @@ export function getColorFromString(
   const colorIndex = hash % TAILWIND_COLORS.length;
   const color = TAILWIND_COLORS[colorIndex];
   
-  // Always use shade 50
+  // Always use shade 100
   return `${variant}-${color}-${COLOR_SHADE}`;
-}
-
-/**
- * Gets a deterministic Tailwind background color class based on a string input.
- * Convenience function that calls getColorFromString with 'bg' variant.
- * 
- * @param str - The string to generate a color for
- * @returns A Tailwind background color class string (e.g., 'bg-blue-500')
- */
-export function getBackgroundColor(str: string): string {
-  return getColorFromString(str, 'bg');
-}
-
-/**
- * Gets a deterministic Tailwind text color class based on a string input.
- * Convenience function that calls getColorFromString with 'text' variant.
- * 
- * @param str - The string to generate a color for
- * @returns A Tailwind text color class string (e.g., 'text-blue-500')
- */
-export function getTextColor(str: string): string {
-  return getColorFromString(str, 'text');
-}
-
-/**
- * Gets a deterministic Tailwind border color class based on a string input.
- * Convenience function that calls getColorFromString with 'border' variant.
- * 
- * @param str - The string to generate a color for
- * @returns A Tailwind border color class string (e.g., 'border-blue-500')
- */
-export function getBorderColor(str: string): string {
-  return getColorFromString(str, 'border');
 }
 

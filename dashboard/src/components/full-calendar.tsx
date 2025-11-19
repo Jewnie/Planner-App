@@ -13,7 +13,7 @@ import {
 
 // shadcn/ui primitives (assume you have shadcn/ui installed)
 import { cn } from '@/lib/utils';
-import { getBackgroundColor } from '@/utils/colors';
+import { getDeterministicColor } from '@/utils/colors';
 
 // --- Types ---
 export interface CalendarEvent {
@@ -206,7 +206,7 @@ export default function MonthCalendar({
                       {dayEvents.slice(0, 3).map((event, index) => {
                         const calendarId =
                           event.calendarId || event.id?.toString() || `event-${index}`;
-                        const backgroundColor = getBackgroundColor(calendarId);
+                        const backgroundColor = getDeterministicColor(calendarId, 'bg');
                         return (
                           <div
                             key={event.id || index}

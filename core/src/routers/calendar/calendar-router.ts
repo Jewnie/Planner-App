@@ -3,16 +3,37 @@ import { router, protectedProcedure } from "../../trpc.js";
 import { getGoogleAccountForUser } from "../user/user-repo.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { listEventsByAccountId } from "./calendar-repo.js";
+import { listEventsByAccountId, getCalendarProviderForAccount, getCalendarsForProvider } from "./calendar-repo.js";
 import { formatDateToYYYYMMDD } from "../../lib/date-utils.js";
 export const appRouter = router({
  
 
 
 
+  listCalendars: protectedProcedure.query(async ({ ctx }) => {
+    const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
+    if (!userAccount) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
+    }
+    
+    const provider = await getCalendarProviderForAccount(userAccount.id);
+    if (!provider) {
+      return [];
+    }
+    
+    const userCalendars = await getCalendarsForProvider(provider.id);
+    return userCalendars.map(calendar => ({
+      id: calendar.id,
+      name: calendar.name,
+    }));
+  }),
+
   listEvents: protectedProcedure.input(z.object({ 
     range: z.enum(["day", "week", "month"]), 
-    dates: z.array(z.union([z.coerce.date(), z.string()]))
+    dates: z.array(z.union([z.coerce.date(), z.string()])),
+    filters: z.object({
+      calendarIds: z.array(z.string()).optional(),
+    }).optional(),
   })).query(async ({ ctx, input }) => {
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
@@ -27,7 +48,12 @@ export const appRouter = router({
       return formatDateToYYYYMMDD(date);
     });
     
-    const items = await listEventsByAccountId(userAccount.id, input.range, formattedDates);
+    const items = await listEventsByAccountId(
+      userAccount.id, 
+      input.range, 
+      formattedDates,
+      input.filters?.calendarIds
+    );
     return items;
   }),
 

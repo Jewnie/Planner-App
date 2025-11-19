@@ -15,7 +15,7 @@ import {
 
 // shadcn/ui primitives (assume you have shadcn/ui installed)
 import { cn } from '@/lib/utils';
-import { getBackgroundColor } from '@/utils/colors';
+import { getDeterministicColor } from '@/utils/colors';
 import { trpc } from '@/lib/trpc';
 
 // --- Types ---
@@ -35,12 +35,14 @@ export interface MonthCalendarProps {
   selectionMode?: 'single' | 'range' | 'none';
   onSelect?: (selection: { start: Date; end: Date | null }) => void;
   onMonthChange?: (month: Date) => void;
+  filterCalendarIds?: string[];
 }
 
 export default function MonthCalendar({
   initialMonth = new Date(),
   selectionMode = 'single',
   onSelect = () => {},
+  filterCalendarIds,
 }: MonthCalendarProps) {
   const [cursorMonth, setCursorMonth] = useState(() => startOfMonth(initialMonth));
 
@@ -69,6 +71,10 @@ export default function MonthCalendar({
     {
       range: 'month',
       dates,
+      filters:
+        filterCalendarIds && filterCalendarIds.length > 0
+          ? { calendarIds: filterCalendarIds }
+          : undefined,
     },
     {
       placeholderData: (previousData) => previousData,
@@ -293,7 +299,7 @@ export default function MonthCalendar({
                       {dayEvents.slice(0, 3).map((event, index) => {
                         const calendarId =
                           event.calendarId || event.id?.toString() || `event-${index}`;
-                        const backgroundColor = getBackgroundColor(calendarId);
+                        const backgroundColor = getDeterministicColor(calendarId, 'bg');
                         return (
                           <div
                             key={event.id || index}

@@ -1,18 +1,20 @@
 import { useMemo } from 'react';
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { getBackgroundColor } from '@/utils/colors';
+import { getDeterministicColor } from '@/utils/colors';
 import { trpc } from '@/lib/trpc';
 import type { CalendarEvent } from './month-calendar';
 
 export interface DayCalendarProps {
   selectedDate?: Date;
   onSelect?: (selection: { start: Date; end: Date | null }) => void;
+  filterCalendarIds?: string[];
 }
 
 export default function DayCalendar({
   selectedDate = new Date(),
   onSelect = () => {},
+  filterCalendarIds,
 }: DayCalendarProps) {
   const dayStart = startOfDay(selectedDate);
   const dayEnd = new Date(dayStart);
@@ -26,6 +28,10 @@ export default function DayCalendar({
     {
       range: 'day',
       dates: [dateString],
+      filters:
+        filterCalendarIds && filterCalendarIds.length > 0
+          ? { calendarIds: filterCalendarIds }
+          : undefined,
     },
     {
       placeholderData: (previousData) => previousData,
@@ -151,7 +157,7 @@ export default function DayCalendar({
                     : start;
 
                   const calendarId = event.calendarId || event.id?.toString() || `event-${index}`;
-                  const backgroundColor = getBackgroundColor(calendarId);
+                  const backgroundColor = getDeterministicColor(calendarId, 'bg');
 
                   const isAllDay =
                     event.start && typeof event.start === 'string'

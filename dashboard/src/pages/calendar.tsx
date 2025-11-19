@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MonthCalendar, { type CalendarView } from '@/components/month-calendar';
 import DayCalendar from '@/components/day-calendar';
 import { startOfMonth, format, subMonths, addMonths, subDays, addDays } from 'date-fns';
 import { EventSidebar } from '@/components/ui/event-sidebar';
 import { Button } from '@/components/ui/button';
+import { trpc } from '@/lib/trpc';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from 'lucide-react';
+import { getDeterministicColor } from '@/utils/colors';
 
 export default function CalendarPage() {
   const [searchParams] = useSearchParams();
@@ -14,6 +19,17 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState<Set<string>>(new Set());
+
+  // Fetch calendars for the logged-in user
+  const calendarsQuery = trpc.calendar.listCalendars.useQuery();
+
+  // Initialize selected calendars to all calendars when they load
+  React.useEffect(() => {
+    if (calendarsQuery.data && calendarsQuery.data.length > 0 && selectedCalendarIds.size === 0) {
+      setSelectedCalendarIds(new Set(calendarsQuery.data.map((cal) => cal.id)));
+    }
+  }, [calendarsQuery.data, selectedCalendarIds.size]);
 
   const monthLabel = useMemo(() => {
     if (view === 'day') {
@@ -53,11 +69,58 @@ export default function CalendarPage() {
               ›
             </Button>
           </div>
+          <div className="flex items-center gap-4">
+            {calendarsQuery.data && calendarsQuery.data.length > 0 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      Calendars ({selectedCalendarIds.size}/{calendarsQuery.data.length})
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="flex max-w-64" align="end">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm mb-3">Calendars</h4>
+                    <div className="space-y-2">
+                      {calendarsQuery.data.map((calendar) => (
+                        <label
+                          key={calendar.id}
+                          className="flex items-center gap-2 cursor-pointer text-sm py-1"
+                        >
+                          <Checkbox
+                            className={getDeterministicColor(calendar.id, 'bg')}
+                            checked={selectedCalendarIds.has(calendar.id)}
+                            onCheckedChange={(checked: boolean) => {
+                              setSelectedCalendarIds((prev) => {
+                                const next = new Set(prev);
+                                if (checked) {
+                                  next.add(calendar.id);
+                                } else {
+                                  next.delete(calendar.id);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="flex items-center gap-2 flex-1">
+                            <span className="truncate">{calendar.name}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
           {view === 'day' ? (
             <DayCalendar
               selectedDate={selectedDate}
+              filterCalendarIds={Array.from(selectedCalendarIds)}
               onSelect={(selection) => {
                 setSelectedDate(selection.start);
                 setIsSidebarOpen(true);
@@ -67,6 +130,7 @@ export default function CalendarPage() {
             <MonthCalendar
               selectionMode="single"
               initialMonth={currentMonth}
+              filterCalendarIds={Array.from(selectedCalendarIds)}
               onMonthChange={(month) => {
                 setCurrentMonth(startOfMonth(month));
               }}

@@ -47,7 +47,7 @@ function AppLayout() {
               <h1 className="text-lg font-semibold">Planner app</h1>
             </div>
           </header> */}
-          <div className="flex flex-1 flex-col">
+          <div className="flex flex-1 flex-col h-full max-h-screen">
             <Outlet />
           </div>
         </ProtectedRoute>

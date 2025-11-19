@@ -9,11 +9,14 @@ import {
   isSameMonth,
   isSameDay,
   differenceInDays,
+  subMonths,
+  addMonths,
 } from 'date-fns';
 
 // shadcn/ui primitives (assume you have shadcn/ui installed)
 import { cn } from '@/lib/utils';
 import { getBackgroundColor } from '@/utils/colors';
+import { trpc } from '@/lib/trpc';
 
 // --- Types ---
 export interface CalendarEvent {
@@ -28,7 +31,6 @@ export interface CalendarEvent {
 export type CalendarView = 'month' | 'week' | 'day';
 
 export interface MonthCalendarProps {
-  events?: CalendarEvent[];
   initialMonth?: Date;
   selectionMode?: 'single' | 'range' | 'none';
   onSelect?: (selection: { start: Date; end: Date | null }) => void;
@@ -36,7 +38,6 @@ export interface MonthCalendarProps {
 }
 
 export default function MonthCalendar({
-  events = [],
   initialMonth = new Date(),
   selectionMode = 'single',
   onSelect = () => {},
@@ -49,6 +50,92 @@ export default function MonthCalendar({
   }, [initialMonth]);
   const [selectedStart, setSelectedStart] = useState<Date | null>(() => new Date());
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null);
+
+  // Calculate dates for previous month, current month, and next month
+  // This ensures we fetch events for all months that might be visible in the calendar grid
+  const previousMonth = startOfMonth(subMonths(cursorMonth, 1));
+  const currentMonthDate = startOfMonth(cursorMonth);
+  const nextMonth = startOfMonth(addMonths(cursorMonth, 1));
+
+  // Send dates as YYYY-MM-DD strings to avoid timezone issues
+  const dates = [
+    format(previousMonth, 'yyyy-MM-dd'),
+    format(currentMonthDate, 'yyyy-MM-dd'),
+    format(nextMonth, 'yyyy-MM-dd'),
+  ];
+
+  // Fetch events for the visible months
+  const eventsQuery = trpc.calendar.listEvents.useQuery(
+    {
+      range: 'month',
+      dates,
+    },
+    {
+      placeholderData: (previousData) => previousData,
+    },
+  );
+
+  // Transform API events to CalendarEvent format
+  const events = useMemo<CalendarEvent[]>(() => {
+    if (!eventsQuery.data || !Array.isArray(eventsQuery.data)) {
+      return [];
+    }
+
+    const items = eventsQuery.data;
+    const calendarEvents: CalendarEvent[] = [];
+
+    for (const event of items) {
+      const startRaw = event?.start?.dateTime || event?.start?.date;
+      const endRaw = event?.end?.dateTime || event?.end?.date;
+
+      if (!startRaw) {
+        console.warn('Event missing start date:', event);
+        continue;
+      }
+
+      // Parse dates - handle both ISO datetime strings and date-only strings
+      let start: Date;
+      let end: Date;
+
+      try {
+        start = new Date(startRaw);
+        if (isNaN(start.getTime())) {
+          console.warn('Invalid start date:', startRaw);
+          continue;
+        }
+
+        if (endRaw) {
+          end = new Date(endRaw);
+          if (isNaN(end.getTime())) {
+            console.warn('Invalid end date:', endRaw);
+            end = start;
+          }
+        } else {
+          end = start;
+        }
+
+        // For all-day events (date-only), ensure end date is at end of day
+        if (event?.start?.date && !event?.start?.dateTime) {
+          // All-day event - end should be end of the end date
+          end = new Date(end);
+          end.setHours(23, 59, 59, 999);
+        }
+
+        calendarEvents.push({
+          id: event.id || `event-${Math.random()}`,
+          calendarId: event.calendarId,
+          title: event.summary || 'Untitled event',
+          start,
+          end,
+        });
+      } catch (error) {
+        console.error('Error parsing event dates:', error, event);
+        continue;
+      }
+    }
+
+    return calendarEvents;
+  }, [eventsQuery.data]);
 
   const monthGrid = useMemo(() => {
     const monthStart = startOfMonth(cursorMonth);

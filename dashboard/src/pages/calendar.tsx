@@ -1,28 +1,35 @@
 import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import FullCalendar, { type CalendarEvent } from '@/components/full-calendar';
-import { startOfMonth, format } from 'date-fns';
+import { startOfMonth, format, subMonths, addMonths } from 'date-fns';
 import { EventSidebar } from '@/components/ui/event-sidebar';
-
-type GoogleEvent = {
-  id?: string | null;
-  summary?: string | null;
-  location?: string | null;
-  start?: { dateTime?: string | null; date?: string | null } | null;
-  end?: { dateTime?: string | null; date?: string | null } | null;
-};
 
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  // Send date as YYYY-MM-DD string to avoid timezone issues
-  // This ensures the server interprets the date correctly regardless of client timezone
-  const dateString = format(currentMonth, 'yyyy-MM-dd');
 
-  const eventsQuery = trpc.calendar.listEvents.useQuery({
-    range: 'month',
-    date: dateString,
-  });
+  // Calculate dates for previous month, current month, and next month
+  // This ensures we fetch events for all months that might be visible in the calendar grid
+  const previousMonth = startOfMonth(subMonths(currentMonth, 1));
+  const currentMonthDate = startOfMonth(currentMonth);
+  const nextMonth = startOfMonth(addMonths(currentMonth, 1));
+
+  // Send dates as YYYY-MM-DD strings to avoid timezone issues
+  const dates = [
+    format(previousMonth, 'yyyy-MM-dd'),
+    format(currentMonthDate, 'yyyy-MM-dd'),
+    format(nextMonth, 'yyyy-MM-dd'),
+  ];
+
+  const eventsQuery = trpc.calendar.listEvents.useQuery(
+    {
+      range: 'month',
+      dates,
+    },
+    {
+      placeholderData: (previousData) => previousData,
+    },
+  );
 
   // Transform Google Calendar events to FullCalendar format
   const calendarEvents = useMemo<CalendarEvent[]>(() => {
@@ -30,7 +37,7 @@ export default function CalendarPage() {
       return [];
     }
 
-    const items = (eventsQuery.data as unknown as GoogleEvent[]) || [];
+    const items = eventsQuery.data;
     const events: CalendarEvent[] = [];
 
     for (const event of items) {
@@ -88,15 +95,7 @@ export default function CalendarPage() {
   return (
     <div className="flex w-full h-full relative">
       <section className="flex-1 flex flex-col min-w-0 w-full">
-        {eventsQuery.isLoading && (
-          <div className="text-sm text-muted-foreground mb-4">Loading events…</div>
-        )}
-
-        {eventsQuery.error && (
-          <div className="text-sm text-red-600 mb-4">Failed to load events.</div>
-        )}
-
-        {!eventsQuery.isLoading && !eventsQuery.error && (
+        {
           <div className="flex-1 min-h-0 min-w-0 w-full">
             <FullCalendar
               events={calendarEvents}
@@ -110,7 +109,7 @@ export default function CalendarPage() {
               }}
             />
           </div>
-        )}
+        }
       </section>
       {selectedDate && <EventSidebar selectedDate={selectedDate} />}
     </div>

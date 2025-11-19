@@ -2,7 +2,7 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay 
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, or, gte, lte, inArray } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
 /**
@@ -89,13 +89,16 @@ export function transformEventToApiFormat(event: InferSelectModel<typeof events>
 }
 
 /**
- * Main function to list events for an account within a specified range
+ * Main function to list events for an account within specified date ranges
  * This performs the actual database query
+ * @param accountId - The account ID
+ * @param range - The range type (day, week, or month) to calculate for each date
+ * @param dateStrings - Array of date strings in YYYY-MM-DD format
  */
 export const listEvents = async (
   accountId: string, 
   range: "day" | "week" | "month", 
-  date?: Date
+  dateStrings: string[]
 ) => {
   // Get the calendar provider for this account
   const provider = await getCalendarProviderForAccount(accountId);
@@ -110,36 +113,58 @@ export const listEvents = async (
   }
 
   const calendarIds = userCalendars.map(cal => cal.id);
-  const targetDay = date ?? new Date();
-
-  // Calculate the date range based on the requested range type
-  let startDate: Date;
-  let endDate: Date;
-
-  if (range === "week") {
-    const { weekStart, weekEnd } = getWeekRange(targetDay);
-    startDate = weekStart;
-    endDate = weekEnd;
-  } else if (range === "month") {
-    const { monthStart, monthEnd } = getMonthRange(targetDay);
-    startDate = monthStart;
-    endDate = monthEnd;
-  } else { // day
-    const { dayStart, dayEnd } = getDayRange(targetDay);
-    startDate = dayStart;
-    endDate = dayEnd;
+  
+  // Parse each date string and calculate the appropriate range for each
+  const dateRanges: Array<{ startDate: Date; endDate: Date }> = [];
+  
+  for (const dateString of dateStrings) {
+    // Parse YYYY-MM-DD as UTC date
+    const [year, month, day] = dateString.split('-').map(Number);
+    const targetDay = new Date(Date.UTC(year, month - 1, day));
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (range === "week") {
+      const { weekStart, weekEnd } = getWeekRange(targetDay);
+      startDate = weekStart;
+      endDate = weekEnd;
+    } else if (range === "month") {
+      const { monthStart, monthEnd } = getMonthRange(targetDay);
+      startDate = monthStart;
+      endDate = monthEnd;
+    } else { // day
+      const { dayStart, dayEnd } = getDayRange(targetDay);
+      startDate = dayStart;
+      endDate = dayEnd;
+    }
+    
+    dateRanges.push({ startDate, endDate });
   }
 
+  // If no date ranges, return empty array
+  if (dateRanges.length === 0) {
+    return [];
+  }
+
+  // Build OR conditions for each date range
+  // Events that overlap with any range: (startTime <= endDate AND endTime >= startDate)
+  const rangeConditions = dateRanges.map(({ startDate, endDate }) =>
+    and(
+      lte(events.startTime, endDate),
+      gte(events.endTime, startDate)
+    )
+  );
+
   // Query events from the database
-  // Events that overlap with the range: startTime <= endDate AND endTime >= startDate
+  // Events that overlap with any of the date ranges
   const dbEvents = await db
     .select()
     .from(events)
     .where(
       and(
         inArray(events.calendarId, calendarIds),
-        lte(events.startTime, endDate),
-        gte(events.endTime, startDate)
+        or(...rangeConditions)
       )
     );
 
@@ -151,13 +176,17 @@ export const listEvents = async (
  * Get current week's events for a user's account (convenience function)
  */
 export async function getCurrentWeekEventsForAccount(accountId: string) {
-  return listEvents(accountId, "week");
+  const today = new Date();
+  const dateString = today.toISOString().split('T')[0];
+  return listEvents(accountId, "week", [dateString]);
 }
 
 /**
  * Get current month's events for a user's account (convenience function)
  */
 export async function getCurrentMonthEventsForAccount(accountId: string) {
-  return listEvents(accountId, "month");
+  const today = new Date();
+  const dateString = today.toISOString().split('T')[0];
+  return listEvents(accountId, "month", [dateString]);
 }
 

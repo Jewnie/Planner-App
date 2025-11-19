@@ -9,21 +9,26 @@ export const appRouter = router({
 
 
 
-  listEvents: protectedProcedure.input(z.object({ range: z.enum(["day", "week", "month"]), date: z.union([z.coerce.date(), z.string()]).transform((val) => {
-    // Handle both Date objects and date strings (YYYY-MM-DD)
-    // If it's a string, parse it as a date in UTC to avoid timezone issues
-    if (typeof val === 'string') {
-      // Parse YYYY-MM-DD as UTC date to avoid timezone shifts
-      const [year, month, day] = val.split('-').map(Number);
-      return new Date(Date.UTC(year, month - 1, day));
-    }
-    return val as Date;
-  }) })).query(async ({ ctx, input }) => {
+  listEvents: protectedProcedure.input(z.object({ 
+    range: z.enum(["day", "week", "month"]), 
+    dates: z.array(z.union([z.coerce.date(), z.string()])).transform((dates) => 
+      dates.map(date => {
+        if (typeof date === 'string') {
+          return date;
+        }
+        // Convert Date to YYYY-MM-DD string
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      })
+    )
+  })).query(async ({ ctx, input }) => {
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
       throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
     }
-    const items = await listEvents(userAccount.id, input.range, input.date);
+    const items = await listEvents(userAccount.id, input.range, input.dates);
     return items;
   }),
 

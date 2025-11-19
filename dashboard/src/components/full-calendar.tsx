@@ -5,12 +5,12 @@ import {
   endOfMonth,
   startOfWeek,
   endOfWeek,
-  eachDayOfInterval,
   format,
   isSameMonth,
   isSameDay,
   sub,
   addMonths,
+  differenceInDays,
   type Locale,
 } from 'date-fns';
 
@@ -51,12 +51,26 @@ export default function FullCalendar({
   const monthGrid = useMemo(() => {
     const monthStart = startOfMonth(cursorMonth);
     const monthEnd = endOfMonth(cursorMonth);
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday start
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
-    const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
+    // Always start from the Sunday of the week that contains the month start
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday start
+    // Always end on the Saturday of the week that contains the month end
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 }); // Saturday end
 
-    // group days into weeks (arrays of 7)
+    // Calculate the number of days needed to show all days of the month
+    const totalDays = differenceInDays(gridEnd, gridStart) + 1; // +1 to include both start and end
+
+    // Ensure we show at least 5 weeks (35 days), but more if needed to include all month days
+    const minDays = 35; // 5 weeks minimum
+    const daysToShow = Math.max(totalDays, minDays);
+
+    // Generate the days array
+    const days: Date[] = [];
+    for (let i = 0; i < daysToShow; i++) {
+      days.push(add(gridStart, { days: i }));
+    }
+
+    // Group days into weeks (arrays of 7)
     const weeks = [];
     for (let i = 0; i < days.length; i += 7) {
       weeks.push(days.slice(i, i + 7));
@@ -170,7 +184,7 @@ export default function FullCalendar({
       </div>
       <div className="flex w-full min-w-0 h-full overflow-auto flex-col">
         <div className="grid grid-cols-7 w-full text-sm border-t shrink-0" style={{ gap: 0 }}>
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName) => (
             <div
               key={dayName}
               className="flex items-center justify-center font-medium text-xs border-r border-border px-2 last:border-r-0"

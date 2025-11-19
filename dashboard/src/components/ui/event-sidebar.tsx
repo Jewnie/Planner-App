@@ -42,9 +42,12 @@ function formatEventTime(event: CalendarEvent): string {
 
 export function EventSidebar(props: { selectedDate: Date | null }) {
   const selectedDate = props.selectedDate ?? new Date();
+  // Format date as YYYY-MM-DD string to avoid timezone issues
+  // This ensures the server interprets the date correctly regardless of client timezone
+  const dateString = format(selectedDate, 'yyyy-MM-dd');
   const dayEventsResult = trpc.calendar.listEvents.useQuery({
     range: 'day',
-    date: selectedDate,
+    dates: [dateString],
   });
 
   const events = dayEventsResult.data || [];

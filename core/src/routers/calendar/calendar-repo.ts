@@ -1,8 +1,9 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
+import pkg from 'rrule';
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
-import { eq, and, or, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
 /**
@@ -44,7 +45,6 @@ export function getDayRange(date: Date) {
   const dayEnd = endOfDay(utcDate);
   return { dayStart, dayEnd };
 }
-
 /**
  * Get calendar provider for a user's account ID
  */
@@ -88,7 +88,6 @@ export function transformEventToApiFormat(event: InferSelectModel<typeof events>
     },
   };
 }
-
 /**
  * Main function to list events for an account within specified date ranges
  * This performs the actual database query
@@ -102,6 +101,9 @@ export const listEventsByAccountId = async (
   dateStrings: string[],
   filterCalendarIds?: string[] 
 ) => {
+
+
+  const { rrulestr } = pkg;
   // Get the calendar provider for this account
   const provider = await getCalendarProviderForAccount(accountId);
   if (!provider) {
@@ -114,9 +116,10 @@ export const listEventsByAccountId = async (
     return [];
   }
 
-
+  // Use filterCalendarIds if provided, otherwise use all user calendars
+  const calendarIds = filterCalendarIds || userCalendars.map(cal => cal.id);
   
-  if (filterCalendarIds?.length === 0) {
+  if (calendarIds.length === 0) {
     return [];
   }
   
@@ -164,18 +167,75 @@ export const listEventsByAccountId = async (
 
   // Query events from the database
   // Events that overlap with any of the date ranges
-  const dbEvents = await db
+  const nonRecurringEvents = await db
     .select()
     .from(events)
     .where(
       and(
-        inArray(events.calendarId, filterCalendarIds || []),
+        inArray(events.calendarId, calendarIds),
+        isNull(events.recurringRule),
         or(...rangeConditions)
       )
     );
+    const recurringEvents = await db
+    .select()
+    .from(events)
+    .where(
+      and(
+        inArray(events.calendarId, calendarIds),
+        isNotNull(events.recurringRule),
+      )
+    );
+  // Separate recurring and non-recurring events
+
+
+  // Calculate the overall date range window for expanding recurring events
+  const overallStart = new Date(Math.min(...dateRanges.map(r => r.startDate.getTime())));
+  const overallEnd = new Date(Math.max(...dateRanges.map(r => r.endDate.getTime())));
+
+  // Expand recurring events
+  const expanded: Array<InferSelectModel<typeof events>> = [];
+
+  for (const event of recurringEvents) {
+    if (!event.recurringRule) continue;
+
+    try {
+      // Create RRule object with dtstart
+      const rule = rrulestr(event.recurringRule, {
+        dtstart: new Date(event.startTime),
+      });
+
+      // Calculate event duration
+      const eventDuration = event.endTime.getTime() - event.startTime.getTime();
+
+      // Expand within the overall visible window
+      const occurrenceDates = rule.between(
+        overallStart,
+        overallEnd,
+        true // inclusive
+      );
+
+      // Create instances for each occurrence
+      const instances = occurrenceDates.map(occurrenceDate => ({
+        ...event,
+        startTime: occurrenceDate,
+        endTime: new Date(occurrenceDate.getTime() + eventDuration),
+      }));
+
+      expanded.push(...instances);
+    } catch (error) {
+      // If RRule parsing fails, skip this recurring event
+      console.error(`Failed to parse RRule for event ${event.id}:`, error);
+      continue;
+    }
+  }
+
+  // Combine non-recurring events with expanded recurring instances
+console.log(dateRanges)
+  const allEvents = [...nonRecurringEvents, ...expanded];
 
   // Transform to API format
-  return dbEvents.map(transformEventToApiFormat);
+  return allEvents.map(transformEventToApiFormat);
 }
 
 /**

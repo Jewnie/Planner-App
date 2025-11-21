@@ -37,7 +37,7 @@ export const appRouter = router({
   })).query(async ({ ctx, input }) => {
     const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
     if (!userAccount) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
+      throw new TRPCError({ code: "NOT_FOUND", message: "No Google account linked for user" });
     }
     
     // Format dates to YYYY-MM-DD strings

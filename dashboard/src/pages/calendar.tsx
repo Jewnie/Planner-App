@@ -21,7 +21,6 @@ export default function CalendarPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<Set<string>>(new Set());
 
-  // Fetch calendars for the logged-in user
   const calendarsQuery = trpc.calendar.listCalendars.useQuery();
 
   // Initialize selected calendars to all calendars when they load

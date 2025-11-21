@@ -37,11 +37,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log('Connecting to Temporal Cloud...', {
-    address: temporalAddress,
-    namespace: temporalNamespace,
-    taskQueue,
-  });
+  console.log('Connecting to Temporal Cloud...');
 
   // Use official Temporal Cloud authentication pattern
   // API key goes as direct property, namespace in metadata
@@ -56,14 +52,6 @@ async function run() {
     },
   };
   
-  // Debug: verify configuration
-  console.log('Connection configuration:', {
-    address: temporalAddress,
-    namespace: temporalNamespace,
-    hasApiKey: true,
-    apiKeyLength: trimmedApiKey.length,
-    apiKeyPrefix: `${trimmedApiKey.substring(0, 8)}...`,
-  });
 
   try {
     const connection = await NativeConnection.connect(connectionOptions);
@@ -81,40 +69,39 @@ async function run() {
       activities,
       taskQueue,
       // Add activity interceptors to log errors
-      interceptors: {
-        activityInbound: [
-          (ctx) => ({
-            async execute(input, next) {
-              const activityName = ctx.info.activityType;
-              console.log(`[Worker] Executing activity: ${activityName}`, {
-                activityType: activityName,
-                attempt: ctx.info.attempt,
-              });
-              try {
-                const result = await next(input);
-                console.log(`[Worker] Activity ${activityName} completed successfully`);
-                return result;
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                const errorStack = error instanceof Error ? error.stack : undefined;
-                console.error(`[Worker] Activity ${activityName} failed:`, {
-                  error: errorMessage,
-                  stack: errorStack,
-                  input: JSON.stringify(input, null, 2),
-                  activityType: activityName,
-                });
-                throw error;
-              }
-            },
-          }),
-        ],
-      },
+      // interceptors: {
+      //   activityInbound: [
+      //     (ctx) => ({
+      //       async execute(input, next) {
+      //         const activityName = ctx.info.activityType;
+      //         console.log(`[Worker] Executing activity: ${activityName}`, {
+      //           activityType: activityName,
+      //           attempt: ctx.info.attempt,
+      //         });
+      //         try {
+      //           const result = await next(input);
+      //           console.log(`[Worker] Activity ${activityName} completed successfully`);
+      //           return result;
+      //         } catch (error) {
+      //           const errorMessage = error instanceof Error ? error.message : String(error);
+      //           const errorStack = error instanceof Error ? error.stack : undefined;
+      //           console.error(`[Worker] Activity ${activityName} failed:`, {
+      //             error: errorMessage,
+      //             stack: errorStack,
+      //             input: JSON.stringify(input, null, 2),
+      //             activityType: activityName,
+      //           });
+      //           throw error;
+      //         }
+      //       },
+      //     }),
+      //   ],
+      // },
     });
 
     console.log('Worker started, listening for tasks...');
 
     await worker.run();
-    console.log('Worker stopped');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Failed to connect to Temporal Cloud:', errorMessage);

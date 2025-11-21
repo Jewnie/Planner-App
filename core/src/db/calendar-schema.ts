@@ -6,6 +6,7 @@ export const calendarProviders = pgTable("calendar_providers", {
   id: uuid("id").primaryKey().defaultRandom(), // UUID PK
   name: text("name").notNull(),
   accountId: text("account_id").notNull(),
+  syncToken: text("sync_token"),
 });
 
 // User-visible calendars
@@ -15,6 +16,7 @@ export const calendars = pgTable("calendars", {
   name: text("name").notNull(),
   color: text("color"),
   metadata: json("metadata"),
+  syncToken: text("sync_token"),
 });
 
 // Main events table

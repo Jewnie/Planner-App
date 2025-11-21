@@ -1,5 +1,6 @@
 import { proxyActivities, log } from '@temporalio/workflow';
 import type * as activities from './activities.js';
+import type { CalendarInfo } from './activities.js';
 
 // Configure activity retry policy
 const activityOptions = {
@@ -15,9 +16,12 @@ const activityOptions = {
 const {
   fetchGoogleCalendars,
   batchDownloadCalendarEvents,
-  upsertCalendarProvider,
+  assertCalendarProviderExists,
   upsertCalendar,
   upsertEvents,
+  updateCalendarProviderSyncToken,
+  updateCalendarSyncToken,
+  getCalendarSyncToken,
 } = proxyActivities<typeof activities>(activityOptions);
 
 export interface SyncWorkflowInput {
@@ -41,7 +45,7 @@ export interface SyncWorkflowOutput {
 export async function syncGoogleCalendarWorkflow(
   input: SyncWorkflowInput
 ): Promise<SyncWorkflowOutput> {
-  log.info('Starting Google Calendar sync workflow', { accountId: input.accountId });
+  log.info('Starting Google Calendar sync workflow');
 
   const errors: string[] = [];
   let calendarsSynced = 0;
@@ -50,79 +54,107 @@ export async function syncGoogleCalendarWorkflow(
   let totalEvents = 0;
 
   // Set default time range if not provided
-  const timeMin = input.timeMin || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const timeMax = input.timeMax || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+  const timeMin = input.timeMin || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 * 12 *2).toISOString(); // 24 months ago
 
   try {
     // Step 1: Ensure calendar provider exists in database
-    log.info('Upserting calendar provider', { accountId: input.accountId });
-    const providerId = await upsertCalendarProvider(input.accountId, 'Google Calendar');
+    
+
+  const provider = await assertCalendarProviderExists({accountId: input.accountId, providerName: 'google'});
+
+
+  let accountSyncToken: string  | null = provider.syncToken; 
+  let allCalendars: CalendarInfo[] = [];
+  let pageToken: string | null = null;
 
     // Step 2: Fetch list of calendars from Google
-    log.info('Fetching calendars from Google', { accountId: input.accountId });
-    const googleCalendars = await fetchGoogleCalendars(input.accountId);
-    log.info(`Found ${googleCalendars.length} calendars to sync`);
-
+    log.info('Fetching calendars from Google');
+    do {
+      const result: {
+        calendars: CalendarInfo[];
+        nextPageToken?: string | null;
+        nextSyncToken?: string | null;
+      } = await fetchGoogleCalendars({accountId: input.accountId, nextPageToken: pageToken || undefined, nextSyncToken: accountSyncToken || undefined});
+      allCalendars = [...allCalendars, ...result.calendars];
+      pageToken = result.nextPageToken || null;
+      accountSyncToken = result.nextSyncToken || null;
+    } while (pageToken);
     // Step 3: For each calendar, sync events
-    for (const googleCalendar of googleCalendars) {
+    for (const calendar of allCalendars) {
       try {
-        log.info(`Syncing calendar: ${googleCalendar.summary}`, {
-          calendarId: googleCalendar.id,
+        log.info(`Syncing calendar: ${calendar.summary}`, {
+          calendarId: calendar.id,
         });
 
         // Upsert calendar in database
         const calendarId = await upsertCalendar(
-          providerId,
-          googleCalendar.id,
-          googleCalendar.summary,
-          googleCalendar.foregroundColor,
+          provider.id,
+          calendar.id,
+          calendar.summary,
+          calendar.foregroundColor,
           {
-            googleCalendarId: googleCalendar.id,
-            colorId: googleCalendar.colorId,
-            backgroundColor: googleCalendar.backgroundColor,
-            foregroundColor: googleCalendar.foregroundColor,
+            googleCalendarId: calendar.id,
+            colorId: calendar.colorId,
+            backgroundColor: calendar.backgroundColor,
+            foregroundColor: calendar.foregroundColor,
           }
         );
 
-        // Batch download events with pagination
-        let pageToken: string | undefined;
+        if(accountSyncToken){
+          await updateCalendarProviderSyncToken({accountId: input.accountId,providerName: 'google', syncToken: accountSyncToken});
+        }
+
+        // Get existing calendar sync token from database
+        let calendarSyncToken: string | null = await getCalendarSyncToken({ calendarId });
+
+        // Batch download events
+        let calendarPageToken: string | null = null;
         let calendarEventsCreated = 0;
         let calendarEventsUpdated = 0;
 
         do {
-          log.info(`Downloading events batch for calendar: ${googleCalendar.summary}`, {
-            pageToken: pageToken || 'first page',
+          log.info(`Downloading events batch for calendar`);
+
+          const batchResult: {
+            events: activities.GoogleCalendarEvent[];
+            nextPageToken: string | null;
+            nextSyncToken: string | null;
+          } = await batchDownloadCalendarEvents({
+            timeMin: timeMin,
+            accountId: input.accountId,
+            calendarId: calendar.id,
+            pageToken: calendarPageToken,
+            syncToken: calendarSyncToken,
           });
+          const { events: batchEvents, nextPageToken, nextSyncToken } = batchResult;
 
-          const { events: batchEvents, nextPageToken } = await batchDownloadCalendarEvents(
-            input.accountId,
-            googleCalendar.id,
-            timeMin,
-            timeMax,
-            pageToken
-          );
-
-          log.info(`Downloaded ${batchEvents.length} events from batch`);
 
           // Save events to database
-          const result = await upsertEvents(calendarId, batchEvents);
-          calendarEventsCreated += result.created;
-          calendarEventsUpdated += result.updated;
+          const upsertResult = await upsertEvents(calendarId, batchEvents);
+          calendarEventsCreated += upsertResult.created;
+          calendarEventsUpdated += upsertResult.updated;
 
-          pageToken = nextPageToken;
-        } while (pageToken);
+          calendarPageToken = nextPageToken ?? null;
+          calendarSyncToken = nextSyncToken ?? null;
+        } while (calendarPageToken !== null);
+
+        if(calendarSyncToken){
+          console.log("-------------------NŃEWSYNCTOKEN----------------------------------", calendarSyncToken);
+        await updateCalendarSyncToken({calendarId: calendarId,providerId: provider.id, syncToken: calendarSyncToken});
+        }
+
 
         calendarsSynced++;
         eventsCreated += calendarEventsCreated;
         eventsUpdated += calendarEventsUpdated;
         totalEvents += calendarEventsCreated + calendarEventsUpdated;
+        console.log("-------------------TOTALEVENTS----------------------------------", totalEvents);
+        console.log("-------------------EVENTSCREATED----------------------------------", calendarEventsCreated);
+        console.log("-------------------EVENTSUPDATED----------------------------------", calendarEventsUpdated);
 
-        log.info(`Completed sync for calendar: ${googleCalendar.summary}`, {
-          created: calendarEventsCreated,
-          updated: calendarEventsUpdated,
-        });
+        log.info(`Completed sync for calendar`);
       } catch (error) {
-        const errorMessage = `Error syncing calendar ${googleCalendar.summary}: ${
+        const errorMessage = `Error syncing calendar ${calendar.summary}: ${
           error instanceof Error ? error.message : String(error)
         }`;
         log.error(errorMessage);
@@ -131,12 +163,7 @@ export async function syncGoogleCalendarWorkflow(
       }
     }
 
-    log.info('Google Calendar sync workflow completed', {
-      calendarsSynced,
-      eventsCreated,
-      eventsUpdated,
-      totalEvents,
-    });
+    log.info('Google Calendar sync workflow completed');
 
     return {
       calendarsSynced,

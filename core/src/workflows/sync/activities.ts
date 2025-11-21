@@ -56,53 +56,76 @@ export async function getGoogleOAuthClient(accountId: string): Promise<Auth.OAut
  * Fetch list of calendars from Google Calendar API
  */
 export async function fetchGoogleCalendars(
-  accountId: string
-): Promise<CalendarInfo[]> {
+  params:{accountId: string,
+    nextPageToken?: string | null,
+    nextSyncToken?: string | null,}  
+): Promise<{
+  calendars: CalendarInfo[];
+  nextPageToken?: string | null;
+  nextSyncToken?: string | null;
+}> {
   try {
-    console.log(`[Activity] Fetching Google calendars for account: ${accountId}`);
-    const oauth2 = await getGoogleOAuthClient(accountId);
+    const oauth2 = await getGoogleOAuthClient(params.accountId);
     const calendarClient = google.calendar({ version: 'v3', auth: oauth2 });
 
-    const response = await calendarClient.calendarList.list();
-    const calendarList = response.data.items || [];
+    const response = await calendarClient.calendarList.list({
+      pageToken: params.nextPageToken ? params.nextPageToken : undefined, 
+      syncToken: params.nextSyncToken ? params.nextSyncToken : undefined 
+    });
     
-    console.log(`[Activity] Found ${calendarList.length} calendars`);
-    
-    return calendarList.map((cal: calendar_v3.Schema$CalendarListEntry) => ({
-      id: cal.id || '',
-      summary: cal.summary || 'Untitled Calendar',
-      colorId: cal.colorId || undefined,
-      backgroundColor: cal.backgroundColor || undefined,
-      foregroundColor: cal.foregroundColor || undefined,
+    const items = response.data.items || [];
+    const calendars: CalendarInfo[] = items.map((item: calendar_v3.Schema$CalendarListEntry) => ({
+      id: item.id || '',
+      summary: item.summary || 'Untitled Calendar',
+      colorId: item.colorId || undefined,
+      backgroundColor: item.backgroundColor || undefined,
+      foregroundColor: item.foregroundColor || undefined,
     }));
+    
+    return {
+      calendars,
+      nextPageToken: response.data.nextPageToken || null,
+      nextSyncToken: response.data.nextSyncToken || null,
+    };
   } catch (error) {
     console.error(`[Activity] Error in fetchGoogleCalendars:`, error);
     throw error;
   }
 }
 
+export async function updateCalendarProviderSyncToken(params:{
+
+  accountId: string,
+  providerName: string,
+  syncToken: string,
+}): Promise<void> {
+  await db.update(calendarProviders).set({ syncToken: params.syncToken }).where(eq(calendarProviders.accountId, params.accountId));
+}
+
 /**
  * Batch download events from a Google Calendar
  */
-export async function batchDownloadCalendarEvents(
+export async function batchDownloadCalendarEvents(params:{
   accountId: string,
   calendarId: string,
-  timeMin: string,
-  timeMax: string,
-  pageToken?: string
-): Promise<{ events: GoogleCalendarEvent[]; nextPageToken?: string }> {
-  const oauth2 = await getGoogleOAuthClient(accountId);
+  timeMin: string ,
+  pageToken: string | null ,
+  syncToken: string | null ,
+}): Promise<{ events: GoogleCalendarEvent[]; nextPageToken: string | null , nextSyncToken: string | null  }> {
+  const oauth2 = await getGoogleOAuthClient(params.accountId);
   const calendarClient = google.calendar({ version: 'v3', auth: oauth2 });
 
-  const response = await calendarClient.events.list({
-    calendarId,
-    timeMin,
-    timeMax,
-    maxResults: 2500, // Google Calendar API max
-    pageToken,
-    singleEvents: true, // Expand recurring events
-    orderBy: 'startTime',
-  });
+  const isInitialSync = !params.syncToken;
+
+const response = await calendarClient.events.list({
+  calendarId: params.calendarId,
+  maxResults: 300,
+  timeMin: isInitialSync ? params.timeMin  : undefined,
+  singleEvents: isInitialSync ? false : undefined,
+  pageToken: params.pageToken ? params.pageToken : undefined,
+  syncToken: params.syncToken ? params.syncToken : undefined,
+});
+
 
   const items = response.data.items || [];
   const events: GoogleCalendarEvent[] = items.map((item: calendar_v3.Schema$Event) => ({
@@ -129,126 +152,48 @@ export async function batchDownloadCalendarEvents(
     raw: item as unknown as Record<string, unknown>,
   }));
 
+
   return {
     events,
-    nextPageToken: response.data.nextPageToken || undefined,
+    nextPageToken: response.data.nextPageToken ?? null,
+    nextSyncToken: response.data.nextSyncToken ?? null,
   };
 }
 
 /**
  * Save or update calendar provider in database
  */
-export async function upsertCalendarProvider(
+export async function assertCalendarProviderExists(params:{
   accountId: string,
-  providerName: string
-): Promise<string> {
+  providerName: string,
+}
+) {
   try {
-    console.log(`[Activity] Upserting calendar provider: ${providerName} for account: ${accountId}`);
+    console.log(`[Activity] Asserting calendar provider exists: ${params.providerName} for account: ${params.accountId}`);
     
     // Check if provider already exists
-    let existing;
-    try {
-      existing = await db
+    const existing = await db
         .select()
         .from(calendarProviders)
-        .where(eq(calendarProviders.accountId, accountId))
+        .where(eq(calendarProviders.accountId, params.accountId))
         .then(rows => rows[0]);
-    } catch (queryError) {
-      const errorMessage = queryError instanceof Error ? queryError.message : String(queryError);
-      const errorStack = queryError instanceof Error ? queryError.stack : undefined;
-      
-      // Try to extract the underlying database error
-      let dbError: string | null = null;
-      if (queryError instanceof Error) {
-        const errorWithCause = queryError as Error & { cause?: Error | unknown; originalError?: Error | unknown };
-        if (errorWithCause.cause instanceof Error) {
-          dbError = errorWithCause.cause.message;
-        } else if (errorWithCause.originalError instanceof Error) {
-          dbError = errorWithCause.originalError.message;
-        } else if (errorWithCause.cause) {
-          dbError = String(errorWithCause.cause);
-        }
+      if(existing){
+        return existing;
       }
-      
-      console.error(`[Activity] Database query failed:`, {
-        error: errorMessage,
-        dbError,
-        stack: errorStack,
-        accountId,
-        table: 'calendar_providers',
-        fullError: queryError,
-      });
-      
-      // Check for specific error types
-      const combinedError = `${errorMessage} ${dbError || ''}`.toLowerCase();
-      
-      // Password authentication errors
-      if (combinedError.includes('password must be a string') || 
-          combinedError.includes('scram-server-first-message') ||
-          combinedError.includes('client password')) {
-        throw new Error(
-          `Database authentication error: The password in your DATABASE_URL may contain special characters that need to be URL-encoded. ` +
-          `Please ensure your DATABASE_URL password is properly encoded (e.g., @ becomes %40, # becomes %23). ` +
-          `Original error: ${dbError || errorMessage}`
-        );
-      }
-      
-      // SSL connection errors
-      if (combinedError.includes('ssl') || combinedError.includes('tls')) {
-        throw new Error(
-          `Database SSL connection error: ${dbError || errorMessage}. ` +
-          `Please check your DATABASE_URL SSL configuration. ` +
-          `If your database doesn't support SSL, add ?sslmode=disable to your connection string.`
-        );
-      }
-      
-      // Table doesn't exist errors
-      if (combinedError.includes('does not exist') || 
-          combinedError.includes('relation') || 
-          combinedError.includes('undefined table')) {
-        throw new Error(
-          `Database table 'calendar_providers' may not exist or migration not run. ` +
-          `Please run database migrations. ` +
-          `Original error: ${dbError || errorMessage}`
-        );
-      }
-      
-      // Generic "Failed query" - could be various issues
-      if (combinedError.includes('failed query')) {
-        throw new Error(
-          `Database query failed. This could be due to: ` +
-          `1. Table doesn't exist (run migrations), ` +
-          `2. Connection/SSL issues, ` +
-          `3. Permission issues. ` +
-          `Original error: ${dbError || errorMessage}`
-        );
-      }
-      
-      // Re-throw with more context
-      throw new Error(
-        `Database query failed: ${dbError || errorMessage}. ` +
-        `Table: calendar_providers, AccountId: ${accountId}`
-      );
-    }
-
-    if (existing) {
-      console.log(`[Activity] Provider already exists: ${existing.id}`);
-      return existing.id;
-    }
 
     // Create new provider
-    const [provider] = await db
+    const newProvider = await db
       .insert(calendarProviders)
       .values({
-        name: providerName,
-        accountId,
+        name: params.providerName,
+        accountId: params.accountId,
       })
-      .returning();
+      .returning()
 
-    console.log(`[Activity] Created new provider: ${provider.id}`);
-    return provider.id;
+    console.log(`[Activity] Created new provider: ${newProvider[0].id}`);
+    return newProvider[0];
   } catch (error) {
-    console.error(`[Activity] Error in upsertCalendarProvider:`, error);
+    console.error(`[Activity] Error in assertCalendarProviderExists:`, error);
     throw error;
   }
 }
@@ -303,6 +248,26 @@ export async function upsertCalendar(
     .returning();
 
   return calendar.id;
+}
+
+export async function getCalendarSyncToken(params: {
+  calendarId: string;
+}): Promise<string | null> {
+  const calendar = await db
+    .select({ syncToken: calendars.syncToken })
+    .from(calendars)
+    .where(eq(calendars.id, params.calendarId))
+    .then(rows => rows[0]);
+  
+  return calendar?.syncToken || null;
+}
+
+export async function updateCalendarSyncToken(params:{
+  calendarId: string,
+  providerId: string,
+  syncToken: string,
+}): Promise<void> {
+  await db.update(calendars).set({ syncToken: params.syncToken }).where(and(eq(calendars.id, params.calendarId), eq(calendars.providerId, params.providerId)));
 }
 
 /**

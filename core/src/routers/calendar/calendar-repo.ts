@@ -1,7 +1,7 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
-import pkg from 'rrule';
+import { rrulestr } from 'rrule';
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -103,7 +103,6 @@ export const listEventsByAccountId = async (
 ) => {
 
 
-  const { rrulestr } = pkg;
   // Get the calendar provider for this account
   const provider = await getCalendarProviderForAccount(accountId);
   if (!provider) {
@@ -216,7 +215,7 @@ export const listEventsByAccountId = async (
       );
 
       // Create instances for each occurrence
-      const instances = occurrenceDates.map(occurrenceDate => ({
+      const instances = occurrenceDates.map((occurrenceDate: Date) => ({
         ...event,
         startTime: occurrenceDate,
         endTime: new Date(occurrenceDate.getTime() + eventDuration),

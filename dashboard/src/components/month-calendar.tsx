@@ -260,7 +260,7 @@ export default function MonthCalendar({
         <div className="grid grid-cols-7 w-full text-sm flex-1 " style={{ gap: 0, marginTop: 0 }}>
           {monthGrid.map((week, weekIndex) => (
             <React.Fragment key={weekIndex}>
-              {week.map((day, dayIndex) => {
+              {week.map((day) => {
                 const inMonth = isSameMonth(day, cursorMonth);
                 const isoDate = format(day, 'yyyy-MM-dd');
                 const dayEvents = eventsByDate[isoDate] || [];

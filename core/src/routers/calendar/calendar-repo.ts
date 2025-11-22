@@ -1,7 +1,7 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
-import pkg, { RRule } from 'rrule';
+import { rrulestr } from 'rrule';
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -194,7 +194,6 @@ export const listEventsByAccountId = async (
 
   // Expand recurring events
   const expanded: Array<InferSelectModel<typeof events>> = [];
-const {rrulestr} = pkg as unknown as {rrulestr: (rule: string, options: {dtstart: Date}) => RRule};
   for (const event of recurringEvents) {
     if (!event.recurringRule) continue;
 

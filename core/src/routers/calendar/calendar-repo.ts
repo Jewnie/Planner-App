@@ -1,8 +1,7 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { rrulestr } = require("rrule");
+
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -103,6 +102,7 @@ export const listEventsByAccountId = async (
   filterCalendarIds?: string[] 
 ) => {
 
+  const { rrulestr } = await import("rrule");
 
   // Get the calendar provider for this account
   const provider = await getCalendarProviderForAccount(accountId);

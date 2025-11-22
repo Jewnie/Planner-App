@@ -1,7 +1,8 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
-import { rrulestr } from 'rrule';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { rrulestr } = require("rrule");
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";

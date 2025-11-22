@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MonthCalendar, { type CalendarView } from '@/components/month-calendar';
 import DayCalendar from '@/components/day-calendar';
@@ -19,20 +19,20 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [selectedCalendarIds, setSelectedCalendarIds] = useState<Set<string>>(new Set());
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([]);
 
   const calendarsQuery = trpc.calendar.listCalendars.useQuery();
 
   // Initialize selected calendars to all calendars when they load
-  React.useEffect(() => {
-    if (calendarsQuery.data && calendarsQuery.data.length > 0 && selectedCalendarIds.size === 0) {
-      setSelectedCalendarIds(new Set(calendarsQuery.data.map((cal) => cal.id)));
+  useEffect(() => {
+    if (calendarsQuery.data && calendarsQuery.data.length > 0 && selectedCalendarIds.length === 0) {
+      setSelectedCalendarIds(calendarsQuery.data.map((cal) => cal.id));
     }
-  }, [calendarsQuery.data, selectedCalendarIds.size]);
+  }, [calendarsQuery.data, selectedCalendarIds.length]);
 
   const monthLabel = useMemo(() => {
     if (view === 'day') {
-      return format(selectedDate, 'MMMM d, yyyy');
+      return format(selectedDate, 'MMMM d yyyy');
     }
     return format(currentMonth, 'LLLL yyyy');
   }, [view, currentMonth, selectedDate]);
@@ -58,7 +58,7 @@ export default function CalendarPage() {
   return (
     <div className="flex w-full h-full relative overflow-hidden">
       <div className="flex flex-col w-full min-w-0 h-full">
-        <div className="flex w-full min-w-0 items-center justify-between space-x-2 shrink-0 p-4 border-b">
+        <div className="flex w-full h-24 min-w-0 items-center justify-between space-x-2 shrink-0 p-4 border-b">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handlePrev} aria-label="Previous month">
               ‹
@@ -75,7 +75,7 @@ export default function CalendarPage() {
                   <Button variant="outline" size="sm" className="gap-2">
                     <Calendar className="h-4 w-4" />
                     <span>
-                      Calendars ({selectedCalendarIds.size}/{calendarsQuery.data.length})
+                      Calendars ({selectedCalendarIds?.length ?? 0}/{calendarsQuery.data.length})
                     </span>
                   </Button>
                 </PopoverTrigger>
@@ -90,16 +90,14 @@ export default function CalendarPage() {
                         >
                           <Checkbox
                             className={getDeterministicColor(calendar.id, 'bg')}
-                            checked={selectedCalendarIds.has(calendar.id)}
+                            checked={selectedCalendarIds?.includes(calendar.id)}
                             onCheckedChange={(checked: boolean) => {
                               setSelectedCalendarIds((prev) => {
-                                const next = new Set(prev);
                                 if (checked) {
-                                  next.add(calendar.id);
+                                  return [...(prev ?? []), calendar.id];
                                 } else {
-                                  next.delete(calendar.id);
+                                  return prev?.filter((id) => id !== calendar.id) ?? [];
                                 }
-                                return next;
                               });
                             }}
                           />
@@ -119,7 +117,7 @@ export default function CalendarPage() {
           {view === 'day' ? (
             <DayCalendar
               selectedDate={selectedDate}
-              filterCalendarIds={Array.from(selectedCalendarIds)}
+              filterCalendarIds={selectedCalendarIds}
               onSelect={(selection) => {
                 setSelectedDate(selection.start);
                 setIsSidebarOpen(true);
@@ -129,7 +127,7 @@ export default function CalendarPage() {
             <MonthCalendar
               selectionMode="single"
               initialMonth={currentMonth}
-              filterCalendarIds={Array.from(selectedCalendarIds)}
+              filterCalendarIds={selectedCalendarIds}
               onMonthChange={(month) => {
                 setCurrentMonth(startOfMonth(month));
               }}
@@ -144,7 +142,7 @@ export default function CalendarPage() {
       {isSidebarOpen && (
         <EventSidebar
           selectedDate={selectedDate}
-          selectedCalendarIds={Array.from(selectedCalendarIds)}
+          selectedCalendarIds={selectedCalendarIds ?? []}
           onClose={() => setIsSidebarOpen(false)}
         />
       )}

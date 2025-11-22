@@ -36,16 +36,12 @@ const TAILWIND_COLORS = [
 ] as const;
 
 /**
- * Color shade to use - always 100
- */
-const COLOR_SHADE = 100;
-
-/**
- * All possible background color classes (100 shade only) - ensures Tailwind includes them
+ * All possible color classes (background, border, text) - ensures Tailwind includes them
  * This array helps Tailwind's JIT compiler recognize the classes
  * The void statement prevents the unused variable warning while keeping the classes visible to Tailwind
  */
-const ALL_BG_COLORS = [
+const ALL_COLOR_CLASSES = [
+  // Background colors - 100 shades
   'bg-blue-100',
   'bg-green-100',
   'bg-red-100',
@@ -63,6 +59,42 @@ const ALL_BG_COLORS = [
   'bg-amber-100',
   'bg-lime-100',
   'bg-sky-100',
+  // Background colors - 500 shades for bullet points
+  'bg-blue-500',
+  'bg-green-500',
+  'bg-red-500',
+  'bg-yellow-500',
+  'bg-purple-500',
+  'bg-pink-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+  'bg-orange-500',
+  'bg-cyan-500',
+  'bg-emerald-500',
+  'bg-violet-500',
+  'bg-fuchsia-500',
+  'bg-rose-500',
+  'bg-amber-500',
+  'bg-lime-500',
+  'bg-sky-500',
+  // Border colors - 500 shades
+  'border-blue-500',
+  'border-green-500',
+  'border-red-500',
+  'border-yellow-500',
+  'border-purple-500',
+  'border-pink-500',
+  'border-indigo-500',
+  'border-teal-500',
+  'border-orange-500',
+  'border-cyan-500',
+  'border-emerald-500',
+  'border-violet-500',
+  'border-fuchsia-500',
+  'border-rose-500',
+  'border-amber-500',
+  'border-lime-500',
+  'border-sky-500',
   // Checked state variants for checkboxes
   'data-[state=checked]:bg-blue-100',
   'data-[state=checked]:bg-green-100',
@@ -82,7 +114,7 @@ const ALL_BG_COLORS = [
   'data-[state=checked]:bg-lime-100',
   'data-[state=checked]:bg-sky-100',
 ] as const;
-void ALL_BG_COLORS; // Prevents unused variable warning while keeping classes visible to Tailwind
+void ALL_COLOR_CLASSES; // Prevents unused variable warning while keeping classes visible to Tailwind
 
 /**
  * Gets a deterministic Tailwind color class based on a string input.
@@ -99,11 +131,12 @@ void ALL_BG_COLORS; // Prevents unused variable warning while keeping classes vi
  */
 export function getDeterministicColor(
   str: string,
-  variant: 'bg' | 'text' | 'border' = 'bg'
+  variant: 'bg' | 'text' | 'border' = 'bg',
+  shade?: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900
 ): string {
   if (!str) {
     // Default color for empty strings
-    return `${variant}-gray-200`;
+    return `${variant}-gray-${shade ?? 200}`;
   }
 
   const hash = hashString(str);
@@ -112,7 +145,7 @@ export function getDeterministicColor(
   const colorIndex = hash % TAILWIND_COLORS.length;
   const color = TAILWIND_COLORS[colorIndex];
   
-  // Always use shade 100
-  return `${variant}-${color}-${COLOR_SHADE}`;
+  
+  return `${variant}-${color}-${shade ?? 100}`;
 }
 

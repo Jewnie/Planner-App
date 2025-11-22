@@ -5,6 +5,7 @@ import { Separator } from './separator';
 import { Button } from './button';
 import { format, isSameDay } from 'date-fns';
 import { Spinner } from './spinner';
+import { useState } from 'react';
 import type { AppRouter } from '@/types/app-router';
 
 type CalendarEvent = AppRouter['calendar']['listEvents']['output'][number];
@@ -39,6 +40,42 @@ function formatEventTime(event: CalendarEvent): string {
   } catch {
     return '';
   }
+}
+
+function EventRawData({ event }: { event: CalendarEvent }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full justify-start text-xs text-muted-foreground h-auto py-1"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`mr-2 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        Raw Data
+      </Button>
+      {isExpanded && (
+        <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-96 border">
+          {JSON.stringify(event, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
 }
 
 export function EventSidebar(props: {
@@ -175,6 +212,9 @@ export function EventSidebar(props: {
                         </p>
                       </>
                     )}
+
+                    <Separator className="my-2" />
+                    <EventRawData event={event} />
                   </CardContent>
                 </Card>
               ))}

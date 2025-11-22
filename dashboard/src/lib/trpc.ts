@@ -15,8 +15,7 @@ export function createTRPCClient() {
     links: [
       loggerLink({
         enabled: (opts) =>
-          (import.meta.env.MODE === "development" && typeof window !== "undefined") ||
-          (opts.direction === "down" && opts.result instanceof Error),
+          opts.direction === "down" && opts.result instanceof Error,
       }),
       httpBatchLink({
         url: `${apiBaseUrl}/trpc`,

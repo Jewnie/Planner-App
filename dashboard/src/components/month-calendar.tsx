@@ -71,10 +71,9 @@ export default function MonthCalendar({
     {
       range: 'month',
       dates,
-      filters:
-        filterCalendarIds && filterCalendarIds.length > 0
-          ? { calendarIds: filterCalendarIds }
-          : undefined,
+      filters: {
+        calendarIds: filterCalendarIds,
+      },
     },
     {
       placeholderData: (previousData) => previousData,
@@ -261,7 +260,7 @@ export default function MonthCalendar({
         <div className="grid grid-cols-7 w-full text-sm flex-1 " style={{ gap: 0, marginTop: 0 }}>
           {monthGrid.map((week, weekIndex) => (
             <React.Fragment key={weekIndex}>
-              {week.map((day) => {
+              {week.map((day, dayIndex) => {
                 const inMonth = isSameMonth(day, cursorMonth);
                 const isoDate = format(day, 'yyyy-MM-dd');
                 const dayEvents = eventsByDate[isoDate] || [];
@@ -279,7 +278,7 @@ export default function MonthCalendar({
                     key={isoDate}
                     onClick={() => handleDateClick(day)}
                     className={cn(
-                      'text-left flex flex-col justify-start overflow-hidden min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
+                      'text-left flex flex-col justify-start overflow-visible min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
                       borderTopClass,
                       monthClass,
                       selectionClass,
@@ -294,30 +293,159 @@ export default function MonthCalendar({
                       </div>
                     </div>
 
-                    <div className="px-2 pb-2 flex-1 w-full overflow-hidden">
+                    <div
+                      className="px-1 relative pb-1 flex-1 w-full"
+                      style={{ overflow: 'visible' }}
+                    >
                       {/* show up to 3 events as small pills (Untitled-style) */}
-                      {dayEvents.slice(0, 3).map((event, index) => {
-                        const calendarId =
-                          event.calendarId || event.id?.toString() || `event-${index}`;
-                        const backgroundColor = getDeterministicColor(calendarId, 'bg');
-                        return (
-                          <div
-                            key={event.id || index}
-                            className={cn(
-                              'text-xs truncate rounded px-2 py-0.5 mt-1 w-full block border',
-                              backgroundColor,
-                            )}
-                            title={event.title}
-                          >
-                            {event.title}
+                      {(() => {
+                        // Sort events: multi-day events first, then by day span (descending)
+                        const sortedEvents = [...dayEvents].sort((a, b) => {
+                          const aStart = typeof a.start === 'string' ? new Date(a.start) : a.start;
+                          const aEnd = a.end
+                            ? typeof a.end === 'string'
+                              ? new Date(a.end)
+                              : a.end
+                            : aStart;
+                          const aSpan = differenceInDays(aEnd, aStart) + 1;
+
+                          const bStart = typeof b.start === 'string' ? new Date(b.start) : b.start;
+                          const bEnd = b.end
+                            ? typeof b.end === 'string'
+                              ? new Date(b.end)
+                              : b.end
+                            : bStart;
+                          const bSpan = differenceInDays(bEnd, bStart) + 1;
+
+                          // Multi-day events (span > 1) come first, then sort by span descending
+                          if (aSpan > 1 && bSpan === 1) return -1;
+                          if (aSpan === 1 && bSpan > 1) return 1;
+                          return bSpan - aSpan; // Descending order
+                        });
+
+                        return sortedEvents
+                          .filter((event) => {
+                            const eventStart =
+                              typeof event.start === 'string' ? new Date(event.start) : event.start;
+                            const eventStartDate = startOfDay(eventStart);
+                            const currentDayDate = startOfDay(day);
+                            return isSameDay(eventStartDate, currentDayDate);
+                          })
+                          .slice(0, 5)
+                          .map((event, index) => {
+                            const eventStart =
+                              typeof event.start === 'string' ? new Date(event.start) : event.start;
+                            const eventEnd = event.end
+                              ? typeof event.end === 'string'
+                                ? new Date(event.end)
+                                : event.end
+                              : eventStart;
+                            const eventDaySpan = differenceInDays(eventEnd, eventStart) + 1;
+                            const calendarId =
+                              event.calendarId || event.id?.toString() || `event-${index}`;
+                            const backgroundColor = getDeterministicColor(calendarId, 'bg', 100);
+                            const bulletColor = getDeterministicColor(calendarId, 'bg', 500);
+                            const borderColor = getDeterministicColor(calendarId, 'border', 500);
+
+                            // Calculate how many days the event spans within the visible month
+                            const eventStartDate = startOfDay(eventStart);
+                            const monthStart = startOfMonth(cursorMonth);
+                            const monthEnd = endOfMonth(cursorMonth);
+                            const spanStart =
+                              eventStartDate < monthStart ? monthStart : eventStartDate;
+                            const spanEnd = eventEnd > monthEnd ? monthEnd : startOfDay(eventEnd);
+                            const visibleSpan = Math.max(1, differenceInDays(spanEnd, spanStart));
+                            const actualSpan = Math.min(eventDaySpan, visibleSpan);
+
+                            // Calculate width to span across multiple day cells
+                            // Each day cell is 100% of its container, so N days = N * 100%
+                            // Account for: container padding (1rem total), borders between cells (1px each)
+                            const borderWidth = (actualSpan - 1) * 1; // 1px border between each cell
+                            const widthValue =
+                              actualSpan > 1
+                                ? `calc(${actualSpan * 100}% - 1rem + ${borderWidth}px)`
+                                : 'calc(100% - 1rem)';
+
+                            // Check if this is a single-day event
+                            const isSingleDay = eventDaySpan === 1;
+
+                            // Format start time for single-day events
+                            const startTime = isSingleDay
+                              ? (() => {
+                                  const startDate =
+                                    typeof event.start === 'string'
+                                      ? new Date(event.start)
+                                      : event.start;
+                                  // Check if it's an all-day event (no time component)
+                                  const isAllDay =
+                                    startDate.getHours() === 0 &&
+                                    startDate.getMinutes() === 0 &&
+                                    startDate.getSeconds() === 0 &&
+                                    startDate.getMilliseconds() === 0;
+                                  return isAllDay ? null : format(startDate, 'h:mm a');
+                                })()
+                              : null;
+
+                            // Single-day events: bullet + title + time
+                            if (isSingleDay) {
+                              return (
+                                <div
+                                  key={event.id || `event-${index}-${day.getTime()}`}
+                                  className="flex items-center gap-1.5 text-xs mt-2 px-2"
+                                  title={event.title}
+                                >
+                                  <div
+                                    className={cn('w-1.5 h-1.5 rounded-full border', bulletColor)}
+                                  />
+                                  <span className="truncate flex-1 min-w-0">
+                                    <span className="font-medium">{event.title}</span>
+                                    {startTime && (
+                                      <span className="text-muted-foreground ml-1">
+                                        {startTime}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            // Multi-day events: badge/pill style
+                            return (
+                              <div
+                                key={event.id || `event-${index}-${day.getTime()}`}
+                                className={cn(
+                                  'text-xs truncate rounded absolute px-2 py-0.5 mt-1 block border z-10',
+                                  backgroundColor,
+                                  borderColor,
+                                )}
+                                style={{
+                                  top: `${index}rem`,
+                                  left: '0.5rem',
+                                  width: widthValue,
+                                }}
+                                title={event.title}
+                              >
+                                {event.title}
+                              </div>
+                            );
+                          });
+                      })()}
+                      {(() => {
+                        // Count events that start on this day
+                        const eventsStartingToday = dayEvents.filter((event) => {
+                          const eventStart =
+                            typeof event.start === 'string' ? new Date(event.start) : event.start;
+                          const eventStartDate = startOfDay(eventStart);
+                          const currentDayDate = startOfDay(day);
+                          return isSameDay(eventStartDate, currentDayDate);
+                        });
+                        const remaining = eventsStartingToday.length - 5;
+                        return remaining > 0 ? (
+                          <div className="text-xs mt-1 text-muted-foreground truncate">
+                            +{remaining} more
                           </div>
-                        );
-                      })}
-                      {dayEvents.length > 3 && (
-                        <div className="text-xs mt-1 text-muted-foreground truncate">
-                          +{dayEvents.length - 3} more
-                        </div>
-                      )}
+                        ) : null;
+                      })()}
                     </div>
                   </button>
                 );

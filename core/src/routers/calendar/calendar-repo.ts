@@ -6,6 +6,8 @@ import { calendarProviders, calendars, events } from "../../db/calendar-schema.j
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
+import RRulePkg from "rrule";
+
 /**
  * Convert a regular Date to UTCDate for UTC-aware calculations
  */
@@ -101,8 +103,8 @@ export const listEventsByAccountId = async (
   dateStrings: string[],
   filterCalendarIds?: string[] 
 ) => {
+  const { rrulestr } = RRulePkg;
 
-  const { rrulestr } = await import("rrule");
 
   // Get the calendar provider for this account
   const provider = await getCalendarProviderForAccount(accountId);
@@ -211,7 +213,6 @@ export const listEventsByAccountId = async (
       const occurrenceDates = rule.between(
         overallStart,
         overallEnd,
-        true // inclusive
       );
 
       // Create instances for each occurrence

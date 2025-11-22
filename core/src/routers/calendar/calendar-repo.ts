@@ -1,7 +1,7 @@
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
-import { rrulestr } from 'rrule';
+import * as rrule from 'rrule';
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -200,7 +200,7 @@ export const listEventsByAccountId = async (
 
     try {
       // Create RRule object with dtstart
-      const rule = rrulestr(event.recurringRule, {
+      const rule = rrule.rrulestr(event.recurringRule, {
         dtstart: new Date(event.startTime),
       });
 

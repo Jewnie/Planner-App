@@ -4,29 +4,36 @@ import { calendarProviders, calendars, events, eventAttendees } from '../../db/c
 import { eq, and } from 'drizzle-orm';
 import { getValidGoogleOAuthClientForActivity } from '../../lib/google-auth.js';
 
-export interface GoogleCalendarEvent {
+export interface GoogleCalendarEventNormalized {
   id: string;
-  summary?: string;
+  title?: string;                // formerly summary
   description?: string;
   location?: string;
-  start?: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
-  end?: {
-    dateTime?: string;
-    date?: string;
-    timeZone?: string;
-  };
+  
+  // Always actual JS dates after processing
+  start: Date;
+  end: Date;
+  
+  // True if this is an all-day event (Google used `start.date`)
+  allDay: boolean;
+  
   attendees?: Array<{
-    email?: string;
-    displayName?: string;
-    responseStatus?: string;
+  email?: string;
+  displayName?: string;
+  responseStatus?: string;
   }>;
+  
+  // Recurrence rules if present (RRULE, EXDATE, etc.)
   recurrence?: string[];
-  raw?: Record<string, unknown>;
-}
+  
+  // Optional original timezone (for display)
+  timeZone?: string;
+  
+  // Raw Google event as fetched (for debugging or re-sync)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  raw?: Record<string, any>;
+  }
+  
 
 export interface CalendarInfo {
   id: string;
@@ -102,6 +109,52 @@ export async function updateCalendarProviderSyncToken(params:{
   await db.update(calendarProviders).set({ syncToken: params.syncToken }).where(eq(calendarProviders.accountId, params.accountId));
 }
 
+function normalizeGoogleEvent(item: calendar_v3.Schema$Event): GoogleCalendarEventNormalized {
+  const isAllDay = !!item.start?.date;   // Only start.date exists
+
+  let start: Date;
+  let end: Date;
+  let timeZone: string | undefined;
+
+  if (isAllDay) {
+    // Google all-day, exclusive end date
+    start = new Date(item.start!.date!);  // e.g. 2025-12-31
+
+    const endExclusive = new Date(item.end!.date!);  
+    end = new Date(endExclusive);
+    end.setDate(end.getDate() - 1);       // inclusive end (correct multi-day)
+    end.setHours(23, 59, 59, 999);
+  } else {
+    // Timed event
+    start = new Date(item.start!.dateTime!);
+    end = new Date(item.end!.dateTime!);
+    // Extract timezone from the event (usually same for start and end)
+    timeZone = (item.start?.timeZone || item.end?.timeZone) || undefined;
+  }
+
+  // Map attendees from Google format to our format
+  const attendees = item.attendees?.map(att => ({
+    email: att.email ?? undefined,
+    displayName: att.displayName ?? undefined,
+    responseStatus: att.responseStatus ?? undefined,
+  }));
+
+  return {
+    id: item.id!,
+    title: item.summary || undefined,
+    description: item.description || undefined,
+    location: item.location || undefined,
+    start,
+    end,
+    allDay: isAllDay,
+    attendees: attendees && attendees.length > 0 ? attendees : undefined,
+    recurrence: item.recurrence || undefined, // Google provides recurrence as string array (RRULE, EXDATE, etc.)
+    timeZone: timeZone || undefined,
+    raw: item,
+  };
+}
+
+
 /**
  * Batch download events from a Google Calendar
  */
@@ -111,7 +164,7 @@ export async function batchDownloadCalendarEvents(params:{
   timeMin: string ,
   pageToken: string | null ,
   syncToken: string | null ,
-}): Promise<{ events: GoogleCalendarEvent[]; nextPageToken: string | null , nextSyncToken: string | null  }> {
+}): Promise<{ events: GoogleCalendarEventNormalized[]; nextPageToken: string | null , nextSyncToken: string | null  }> {
   const oauth2 = await getGoogleOAuthClient(params.accountId);
   const calendarClient = google.calendar({ version: 'v3', auth: oauth2 });
 
@@ -128,29 +181,7 @@ const response = await calendarClient.events.list({
 
 
   const items = response.data.items || [];
-  const events: GoogleCalendarEvent[] = items.map((item: calendar_v3.Schema$Event) => ({
-    id: item.id || '',
-    summary: item.summary || undefined,
-    description: item.description || undefined,
-    location: item.location || undefined,
-    start: item.start ? {
-      dateTime: item.start.dateTime || undefined,
-      date: item.start.date || undefined,
-      timeZone: item.start.timeZone || undefined,
-    } : undefined,
-    end: item.end ? {
-      dateTime: item.end.dateTime || undefined,
-      date: item.end.date || undefined,
-      timeZone: item.end.timeZone || undefined,
-    } : undefined,
-    attendees: item.attendees?.map(att => ({
-      email: att.email || undefined,
-      displayName: att.displayName || undefined,
-      responseStatus: att.responseStatus || undefined,
-    })),
-    recurrence: item.recurrence || undefined,
-    raw: item as unknown as Record<string, unknown>,
-  }));
+  const events: GoogleCalendarEventNormalized[] = items.map(normalizeGoogleEvent);
 
 
   return {
@@ -275,31 +306,22 @@ export async function updateCalendarSyncToken(params:{
  */
 export async function upsertEvents(
   calendarId: string,
-  googleEvents: GoogleCalendarEvent[]
+  googleEvents: GoogleCalendarEventNormalized[]
 ): Promise<{ created: number; updated: number }> {
   let created = 0;
   let updated = 0;
 
   for (const googleEvent of googleEvents) {
-    // Parse start and end times
-    const startTime = googleEvent.start?.dateTime
-      ? new Date(googleEvent.start.dateTime)
-      : googleEvent.start?.date
-        ? new Date(googleEvent.start.date)
-        : null;
+    // Parse start and end times - ensure they are Date objects
+    // (Temporal workflows serialize Date objects, so they may come back as strings)
+    const startTime = googleEvent.start instanceof Date 
+      ? googleEvent.start 
+      : new Date(googleEvent.start);
+    const endTime = googleEvent.end instanceof Date 
+      ? googleEvent.end 
+      : new Date(googleEvent.end);
 
-    const endTime = googleEvent.end?.dateTime
-      ? new Date(googleEvent.end.dateTime)
-      : googleEvent.end?.date
-        ? new Date(googleEvent.end.date)
-        : null;
-
-    if (!startTime || !endTime) {
-      console.warn(`Skipping event ${googleEvent.id}: missing start or end time`);
-      continue;
-    }
-
-    const isAllDay = !!googleEvent.start?.date && !googleEvent.start?.dateTime;
+    const isAllDay = googleEvent.allDay;
 
     // Check if event already exists
     const existing = await db
@@ -318,14 +340,14 @@ export async function upsertEvents(
       await db
         .update(events)
         .set({
-          title: googleEvent.summary || 'Untitled Event',
+          title: googleEvent.title || 'Untitled Event',
           description: googleEvent.description || null,
           location: googleEvent.location || null,
           startTime,
           endTime,
           allDay: isAllDay,
           recurringRule: googleEvent.recurrence?.[0] || null,
-          timeZone: googleEvent.start?.timeZone || googleEvent.end?.timeZone || null,
+          timeZone: googleEvent.timeZone || null,
           rawData: googleEvent.raw || null,
           updatedAt: new Date(),
         })
@@ -355,14 +377,14 @@ export async function upsertEvents(
         .values({
           calendarId,
           providerEventId: googleEvent.id,
-          title: googleEvent.summary || 'Untitled Event',
+          title: googleEvent.title || 'Untitled Event',
           description: googleEvent.description || null,
           location: googleEvent.location || null,
           startTime,
           endTime,
           allDay: isAllDay,
           recurringRule: googleEvent.recurrence?.[0] || null,
-          timeZone: googleEvent.start?.timeZone || googleEvent.end?.timeZone || null,
+          timeZone: googleEvent.timeZone || null,
           rawData: googleEvent.raw || null,
         })
         .returning();

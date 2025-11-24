@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   add,
   startOfMonth,
@@ -19,14 +19,23 @@ import { getDeterministicColor } from '@/utils/colors';
 import { trpc } from '@/lib/trpc';
 
 // --- Types ---
-export interface CalendarEvent {
-  id: string | number;
-  calendarId?: string;
+
+export type CalendarEvent = {
+  id: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  calendarId: string;
+  providerEventId: string;
   title: string;
-  start: Date | string;
-  end?: Date | string;
-  color?: string;
-}
+  description: string | null;
+  location: string | null;
+  startTime: string;
+  endTime: string;
+  allDay: boolean | null;
+  recurringRule: string | null;
+  timeZone: string | null;
+  rawData?: unknown;
+};
 
 export type CalendarView = 'month' | 'week' | 'day';
 
@@ -52,9 +61,7 @@ export default function MonthCalendar({
   }, [initialMonth]);
   const [selectedStart, setSelectedStart] = useState<Date | null>(() => new Date());
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null);
-
-  // Calculate dates for previous month, current month, and next month
-  // This ensures we fetch events for all months that might be visible in the calendar grid
+  const multiDayEventRef = useRef<HTMLDivElement>(null);
   const previousMonth = startOfMonth(subMonths(cursorMonth, 1));
   const currentMonthDate = startOfMonth(cursorMonth);
   const nextMonth = startOfMonth(addMonths(cursorMonth, 1));
@@ -80,66 +87,8 @@ export default function MonthCalendar({
     },
   );
 
-  // Transform API events to CalendarEvent format
-  const events = useMemo<CalendarEvent[]>(() => {
-    if (!eventsQuery.data || !Array.isArray(eventsQuery.data)) {
-      return [];
-    }
-
-    const items = eventsQuery.data;
-    const calendarEvents: CalendarEvent[] = [];
-
-    for (const event of items) {
-      const startRaw = event?.start?.dateTime || event?.start?.date;
-      const endRaw = event?.end?.dateTime || event?.end?.date;
-
-      if (!startRaw) {
-        console.warn('Event missing start date:', event);
-        continue;
-      }
-
-      // Parse dates - handle both ISO datetime strings and date-only strings
-      let start: Date;
-      let end: Date;
-
-      try {
-        start = new Date(startRaw);
-        if (isNaN(start.getTime())) {
-          console.warn('Invalid start date:', startRaw);
-          continue;
-        }
-
-        if (endRaw) {
-          end = new Date(endRaw);
-          if (isNaN(end.getTime())) {
-            console.warn('Invalid end date:', endRaw);
-            end = start;
-          }
-        } else {
-          end = start;
-        }
-
-        // For all-day events (date-only), ensure end date is at end of day
-        if (event?.start?.date && !event?.start?.dateTime) {
-          // All-day event - end should be end of the end date
-          end = new Date(end);
-          end.setHours(23, 59, 59, 999);
-        }
-
-        calendarEvents.push({
-          id: event.id || `event-${Math.random()}`,
-          calendarId: event.calendarId,
-          title: event.summary || 'Untitled event',
-          start,
-          end,
-        });
-      } catch (error) {
-        console.error('Error parsing event dates:', error, event);
-        continue;
-      }
-    }
-
-    return calendarEvents;
+  const events = useMemo(() => {
+    return eventsQuery.data || [];
   }, [eventsQuery.data]);
 
   const monthGrid = useMemo(() => {
@@ -172,29 +121,20 @@ export default function MonthCalendar({
     return weeks;
   }, [cursorMonth]);
 
-  const eventsByDate = useMemo(() => {
-    // naive bucketing by ISO date (yyyy-MM-dd)
-    const map: Record<string, CalendarEvent[]> = {};
-    events.forEach((event) => {
-      const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
-      const end = event.end
-        ? typeof event.end === 'string'
-          ? new Date(event.end)
-          : event.end
-        : start;
+  const filterEventsByDay = (day: Date) => {
+    return events.filter((event) => {
+      const start = new Date(event.startTime);
+      const end = new Date(event.endTime);
 
-      // iterate days between start and end and add reference
-      let day = startOfDay(start);
-      const lastDay = startOfDay(end);
-      while (day <= lastDay) {
-        const key = format(day, 'yyyy-MM-dd');
-        map[key] = map[key] || [];
-        map[key].push(event);
-        day = add(day, { days: 1 });
+      // All-day events from DB are stored exclusive-end,
+      // so shift them to end of the previous day
+      if (event.allDay) {
+        end.setHours(23, 59, 59, 999);
       }
+
+      return day >= startOfDay(start) && day <= startOfDay(end);
     });
-    return map;
-  }, [events]);
+  };
 
   function startOfDay(date: Date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -258,105 +198,98 @@ export default function MonthCalendar({
           ))}
         </div>
         <div className="grid grid-cols-7 w-full text-sm flex-1 " style={{ gap: 0, marginTop: 0 }}>
-          {monthGrid.map((week, weekIndex) => (
-            <React.Fragment key={weekIndex}>
-              {week.map((day) => {
-                const inMonth = isSameMonth(day, cursorMonth);
-                const isoDate = format(day, 'yyyy-MM-dd');
-                const dayEvents = eventsByDate[isoDate] || [];
-                const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
-                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          {monthGrid.map((week, weekIndex) => {
+            const weekEvents: string[] = [];
+            return (
+              <React.Fragment key={weekIndex}>
+                {week.map((day) => {
+                  const inMonth = isSameMonth(day, cursorMonth);
+                  const dayEvents = filterEventsByDay(day);
+                  const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
+                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-                // Ensure all classes are always present as string literals for Tailwind scanning
-                const borderTopClass = weekIndex === 0 ? 'border-t' : '';
-                const monthClass = !inMonth ? 'bg-gray-100 opacity-50' : '';
-                const selectionClass = isInSelection(day) ? 'bg-green-50' : '';
-                const weekendClass = isWeekend && inMonth ? 'bg-blue-50' : '';
+                  // Ensure all classes are always present as string literals for Tailwind scanning
+                  const borderTopClass = weekIndex === 0 ? 'border-t' : '';
+                  const monthClass = !inMonth ? 'bg-gray-100 opacity-50' : '';
+                  const selectionClass = isInSelection(day) ? 'bg-green-50' : '';
+                  const weekendClass = isWeekend && inMonth ? 'bg-blue-50' : '';
 
-                return (
-                  <button
-                    key={isoDate}
-                    onClick={() => handleDateClick(day)}
-                    className={cn(
-                      'text-left flex flex-col justify-start overflow-visible min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
-                      borderTopClass,
-                      monthClass,
-                      selectionClass,
-                      weekendClass,
-                    )}
-                    aria-pressed={isInSelection(day)}
-                  >
-                    <div className="flex items-start justify-between p-2">
-                      <div className={cn('text-sm font-semibold')}>{format(day, 'd')}</div>
-                      <div className="text-xs font-medium">
-                        {isSameDay(day, new Date()) ? 'Today' : ''}
-                      </div>
-                    </div>
-
-                    <div
-                      className="px-1 relative pb-1 flex-1 w-full"
-                      style={{ overflow: 'visible' }}
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      onClick={() => handleDateClick(day)}
+                      className={cn(
+                        'text-left flex flex-col justify-start overflow-visible min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
+                        borderTopClass,
+                        monthClass,
+                        selectionClass,
+                        weekendClass,
+                      )}
+                      aria-pressed={isInSelection(day)}
                     >
-                      {/* show up to 3 events as small pills (Untitled-style) */}
-                      {(() => {
-                        // Sort events: multi-day events first, then by day span (descending)
-                        const sortedEvents = [...dayEvents].sort((a, b) => {
-                          const aStart = typeof a.start === 'string' ? new Date(a.start) : a.start;
-                          const aEnd = a.end
-                            ? typeof a.end === 'string'
-                              ? new Date(a.end)
-                              : a.end
-                            : aStart;
-                          const aSpan = differenceInDays(aEnd, aStart) + 1;
+                      <div className="flex items-start justify-between p-2">
+                        <div className={cn('text-sm font-semibold')}>{format(day, 'd')}</div>
+                        <div className="text-xs font-medium">
+                          {isSameDay(day, new Date()) ? 'Today' : ''}
+                        </div>
+                      </div>
 
-                          const bStart = typeof b.start === 'string' ? new Date(b.start) : b.start;
-                          const bEnd = b.end
-                            ? typeof b.end === 'string'
-                              ? new Date(b.end)
-                              : b.end
-                            : bStart;
-                          const bSpan = differenceInDays(bEnd, bStart) + 1;
+                      <div
+                        className="px-1 relative pb-1 flex-1 w-full"
+                        style={{ overflow: 'visible' }}
+                      >
+                        {/* show up to 3 events as small pills (Untitled-style) */}
+                        {(() => {
+                          // Sort events: multi-day events first, then by day span (descending)
+                          const sortedEvents = dayEvents.sort((a, b) => {
+                            const aStart = new Date(a.startTime);
+                            const aEnd = new Date(a.endTime);
+                            const aSpan = differenceInDays(aEnd, aStart) + 1;
 
-                          // Multi-day events (span > 1) come first, then sort by span descending
-                          if (aSpan > 1 && bSpan === 1) return -1;
-                          if (aSpan === 1 && bSpan > 1) return 1;
-                          return bSpan - aSpan; // Descending order
-                        });
+                            const bStart = new Date(b.startTime);
+                            const bEnd = new Date(b.endTime);
+                            const bSpan = differenceInDays(bEnd, bStart) + 1;
 
-                        return sortedEvents
-                          .filter((event) => {
-                            const eventStart =
-                              typeof event.start === 'string' ? new Date(event.start) : event.start;
-                            const eventStartDate = startOfDay(eventStart);
-                            const currentDayDate = startOfDay(day);
-                            return isSameDay(eventStartDate, currentDayDate);
-                          })
-                          .slice(0, 5)
-                          .map((event, index) => {
-                            const eventStart =
-                              typeof event.start === 'string' ? new Date(event.start) : event.start;
-                            const eventEnd = event.end
-                              ? typeof event.end === 'string'
-                                ? new Date(event.end)
-                                : event.end
-                              : eventStart;
-                            const eventDaySpan = differenceInDays(eventEnd, eventStart) + 1;
+                            // 1. Multi-day events first
+                            if (aSpan > 1 && bSpan === 1) return -1;
+                            if (aSpan === 1 && bSpan > 1) return 1;
+
+                            // 2. All-day single-day events next
+                            if (a.allDay && aSpan === 1 && !(b.allDay && bSpan === 1)) return -1;
+                            if (b.allDay && bSpan === 1 && !(a.allDay && aSpan === 1)) return 1;
+
+                            // 3. Regular timed single-day events last
+                            return 0; // keep original order if both are same category
+                          });
+
+                          return sortedEvents.slice(0, 5).map((event, index) => {
+                            if (weekEvents.includes(event.id)) {
+                              return null;
+                            } else {
+                              weekEvents.push(event.id);
+                            }
+                            const eventStart = new Date(event.startTime);
+                            const eventEnd = new Date(event.endTime);
+                            const eventDaySpan = differenceInDays(eventEnd, eventStart) + 1; // +1 NECESSARY?
                             const calendarId =
                               event.calendarId || event.id?.toString() || `event-${index}`;
                             const backgroundColor = getDeterministicColor(calendarId, 'bg', 100);
                             const bulletColor = getDeterministicColor(calendarId, 'bg', 500);
                             const borderColor = getDeterministicColor(calendarId, 'border', 500);
 
-                            // Calculate how many days the event spans within the visible month
-                            const eventStartDate = startOfDay(eventStart);
-                            const monthStart = startOfMonth(cursorMonth);
-                            const monthEnd = endOfMonth(cursorMonth);
-                            const spanStart =
-                              eventStartDate < monthStart ? monthStart : eventStartDate;
-                            const spanEnd = eventEnd > monthEnd ? monthEnd : startOfDay(eventEnd);
-                            const visibleSpan = Math.max(1, differenceInDays(spanEnd, spanStart));
-                            const actualSpan = Math.min(eventDaySpan, visibleSpan);
+                            // Calculate how many days the event spans within the visible week
+                            const eventStartDate = startOfDay(new Date(eventStart));
 
+                            const weekStart = startOfWeek(day, { weekStartsOn: 1 }); // Monday start
+                            const weekEnd = endOfWeek(day, { weekStartsOn: 1 }); // Sunday end
+                            const spanStart =
+                              eventStartDate < weekStart ? weekStart : eventStartDate;
+                            const spanEnd =
+                              new Date(eventEnd) > weekEnd
+                                ? weekEnd
+                                : startOfDay(new Date(eventEnd));
+                            const visibleSpan = differenceInDays(spanEnd, spanStart) + 1; // +1 to include both start and end
+                            const actualSpan = Math.min(eventDaySpan, visibleSpan);
                             // Calculate width to span across multiple day cells
                             // Each day cell is 100% of its container, so N days = N * 100%
                             // Account for: container padding (1rem total), borders between cells (1px each)
@@ -370,29 +303,23 @@ export default function MonthCalendar({
                             const isSingleDay = eventDaySpan === 1;
 
                             // Format start time for single-day events
-                            const startTime = isSingleDay
-                              ? (() => {
-                                  const startDate =
-                                    typeof event.start === 'string'
-                                      ? new Date(event.start)
-                                      : event.start;
-                                  // Check if it's an all-day event (no time component)
-                                  const isAllDay =
-                                    startDate.getHours() === 0 &&
-                                    startDate.getMinutes() === 0 &&
-                                    startDate.getSeconds() === 0 &&
-                                    startDate.getMilliseconds() === 0;
-                                  return isAllDay ? null : format(startDate, 'h:mm a');
-                                })()
-                              : null;
+                            const startTime = event.startTime;
+                            if (!isSingleDay && event.allDay) {
+                              console.log('event', event);
+                            }
 
                             // Single-day events: bullet + title + time
-                            if (isSingleDay) {
+                            if (isSingleDay && !event.allDay) {
                               return (
                                 <div
                                   key={event.id || `event-${index}-${day.getTime()}`}
-                                  className="flex items-center gap-1.5 text-xs mt-2 px-2"
+                                  className="flex absolute h-6 items-center gap-1.5 text-xs mt-2 px-2"
                                   title={event.title}
+                                  style={{
+                                    top: `${index * 20}px`,
+                                    left: '0.5rem',
+                                    width: widthValue,
+                                  }}
                                 >
                                   <div
                                     className={cn('w-1.5 h-1.5 rounded-full border', bulletColor)}
@@ -412,14 +339,15 @@ export default function MonthCalendar({
                             // Multi-day events: badge/pill style
                             return (
                               <div
+                                ref={multiDayEventRef}
                                 key={event.id || `event-${index}-${day.getTime()}`}
                                 className={cn(
-                                  'text-xs truncate rounded absolute px-2 py-0.5 mt-1 block border z-10',
+                                  'text-xs truncate h-6 rounded absolute px-2 py-0.5 mt-1 block border z-10',
                                   backgroundColor,
                                   borderColor,
                                 )}
                                 style={{
-                                  top: `${index}rem`,
+                                  top: `${index * 20}px`,
                                   left: '0.5rem',
                                   width: widthValue,
                                 }}
@@ -429,29 +357,28 @@ export default function MonthCalendar({
                               </div>
                             );
                           });
-                      })()}
-                      {(() => {
-                        // Count events that start on this day
-                        const eventsStartingToday = dayEvents.filter((event) => {
-                          const eventStart =
-                            typeof event.start === 'string' ? new Date(event.start) : event.start;
-                          const eventStartDate = startOfDay(eventStart);
-                          const currentDayDate = startOfDay(day);
-                          return isSameDay(eventStartDate, currentDayDate);
-                        });
-                        const remaining = eventsStartingToday.length - 5;
-                        return remaining > 0 ? (
-                          <div className="text-xs mt-1 text-muted-foreground truncate">
-                            +{remaining} more
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                  </button>
-                );
-              })}
-            </React.Fragment>
-          ))}
+                        })()}
+                        {(() => {
+                          // Count events that start on this day
+                          const eventsStartingToday = dayEvents.filter((event) => {
+                            const eventStartDate = startOfDay(new Date(event.startTime));
+                            const currentDayDate = startOfDay(day);
+                            return isSameDay(eventStartDate, currentDayDate);
+                          });
+                          const remaining = eventsStartingToday.length - 5;
+                          return remaining > 0 ? (
+                            <div className="text-xs mt-1 text-muted-foreground truncate">
+                              +{remaining} more
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     </div>

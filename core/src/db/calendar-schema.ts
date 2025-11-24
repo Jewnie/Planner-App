@@ -22,22 +22,38 @@ export const calendars = pgTable("calendars", {
 // Main events table
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().defaultRandom(),
-  calendarId: uuid("calendar_id").notNull(), // UUID reference to calendar
-  providerEventId: text("provider_event_id").notNull(),
+  calendarId: uuid("calendar_id").notNull(),   // FK to calendar
+  
+  providerEventId: text("provider_event_id")
+  .notNull()
+  .unique(),
+  
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
+  
+  // Store real instants in time (always UTC!)
+  startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+  endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+  
+  // If Google event was all-day (start.date, end.date)
   allDay: boolean("all_day").default(false),
+  
+  // Standard RRULE
   recurringRule: text("recurring_rule"),
+  
+  // Optional original timezone (for display)
   timeZone: text("time_zone"),
+  
+  // Preserve original Google payload
   rawData: json("raw_data"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date()),
-});
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+  .defaultNow()
+  .$onUpdate(() => new Date()),
+  });
+  
 
 // Attendees table
 export const eventAttendees = pgTable("event_attendees", {

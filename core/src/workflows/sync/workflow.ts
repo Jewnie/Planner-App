@@ -116,7 +116,7 @@ export async function syncGoogleCalendarWorkflow(
           log.info(`Downloading events batch for calendar`);
 
           const batchResult: {
-            events: activities.GoogleCalendarEvent[];
+            events: activities.GoogleCalendarEventNormalized[];
             nextPageToken: string | null;
             nextSyncToken: string | null;
           } = await batchDownloadCalendarEvents({

@@ -68,35 +68,9 @@ export async function getCalendarsForProvider(providerId: string) {
     .where(eq(calendars.providerId, providerId));
 }
 
-/**
- * Transform event from database format to API format
- */
-export function transformEventToApiFormat(event: InferSelectModel<typeof events>) {
-  return {
-    id: event.providerEventId,
-    calendarId: event.calendarId,
-    summary: event.title,
-    description: event.description || null,
-    location: event.location || null,
-    start: {
-      dateTime: event.allDay ? null : event.startTime.toISOString(),
-      date: event.allDay ? event.startTime.toISOString().split('T')[0] : null,
-      timeZone: event.timeZone || null,
-    },
-    end: {
-      dateTime: event.allDay ? null : event.endTime.toISOString(),
-      date: event.allDay ? event.endTime.toISOString().split('T')[0] : null,
-      timeZone: event.timeZone || null,
-    },
-  };
-}
-/**
- * Main function to list events for an account within specified date ranges
- * This performs the actual database query
- * @param accountId - The account ID
- * @param range - The range type (day, week, or month) to calculate for each date
- * @param dateStrings - Array of date strings in YYYY-MM-DD format
- */
+
+
+
 export const listEventsByAccountId = async (
   accountId: string, 
   range: "day" | "week" | "month", 
@@ -215,6 +189,7 @@ export const listEventsByAccountId = async (
         overallEnd,
       );
 
+
       // Create instances for each occurrence
       const instances = occurrenceDates.map((occurrenceDate: Date) => ({
         ...event,
@@ -231,28 +206,14 @@ export const listEventsByAccountId = async (
   }
 
   // Combine non-recurring events with expanded recurring instances
-console.log(dateRanges)
   const allEvents = [...nonRecurringEvents, ...expanded];
 
+  
+
+
   // Transform to API format
-  return allEvents.map(transformEventToApiFormat);
+  return allEvents
 }
 
-/**
- * Get current week's events for a user's account (convenience function)
- */
-export async function getCurrentWeekEventsForAccount(accountId: string) {
-  const today = new Date();
-  const dateString = today.toISOString().split('T')[0];
-  return listEventsByAccountId(accountId, "week", [dateString]);
-}
 
-/**
- * Get current month's events for a user's account (convenience function)
- */
-export async function getCurrentMonthEventsForAccount(accountId: string) {
-  const today = new Date();
-  const dateString = today.toISOString().split('T')[0];
-  return listEventsByAccountId(accountId, "month", [dateString]);
-}
 

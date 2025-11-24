@@ -6,17 +6,15 @@ import { Button } from './button';
 import { format, isSameDay } from 'date-fns';
 import { Spinner } from './spinner';
 import { useState } from 'react';
-import type { AppRouter } from '@/types/app-router';
-
-type CalendarEvent = AppRouter['calendar']['listEvents']['output'][number];
+import type { CalendarEvent } from '../month-calendar';
 
 function formatEventTime(event: CalendarEvent): string {
-  const start = event.start?.dateTime || event.start?.date;
-  const end = event.end?.dateTime || event.end?.date;
+  const start = event.startTime;
+  const end = event.endTime;
 
   if (!start) return '';
 
-  const isAllDay = !!event.start?.date && !event.start?.dateTime;
+  const isAllDay = event.allDay;
 
   if (isAllDay) {
     return 'All day';
@@ -158,9 +156,7 @@ export function EventSidebar(props: {
               {events.map((event: CalendarEvent) => (
                 <Card key={event.id || `event-${Math.random()}`} className="overflow-hidden">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base leading-tight">
-                      {event.summary || 'Untitled Event'}
-                    </CardTitle>
+                    <CardTitle className="text-base leading-tight">{event.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 pt-0">
                     {formatEventTime(event) && (

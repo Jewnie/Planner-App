@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MonthCalendar, { type CalendarView } from '@/components/month-calendar';
-import DayCalendar from '@/components/day-calendar';
 import { startOfMonth, format, subMonths, addMonths, subDays, addDays } from 'date-fns';
 import { EventSidebar } from '@/components/ui/event-sidebar';
 import { Button } from '@/components/ui/button';
@@ -114,29 +113,18 @@ export default function CalendarPage() {
           </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
-          {view === 'day' ? (
-            <DayCalendar
-              selectedDate={selectedDate}
-              filterCalendarIds={selectedCalendarIds}
-              onSelect={(selection) => {
-                setSelectedDate(selection.start);
-                setIsSidebarOpen(true);
-              }}
-            />
-          ) : (
-            <MonthCalendar
-              selectionMode="single"
-              initialMonth={currentMonth}
-              filterCalendarIds={selectedCalendarIds}
-              onMonthChange={(month) => {
-                setCurrentMonth(startOfMonth(month));
-              }}
-              onSelect={(selection) => {
-                setSelectedDate(selection.start);
-                setIsSidebarOpen(true);
-              }}
-            />
-          )}
+          <MonthCalendar
+            selectionMode="single"
+            initialMonth={currentMonth}
+            filterCalendarIds={selectedCalendarIds}
+            onMonthChange={(month) => {
+              setCurrentMonth(startOfMonth(month));
+            }}
+            onSelect={(selection) => {
+              setSelectedDate(selection.start);
+              setIsSidebarOpen(true);
+            }}
+          />
         </div>
       </div>
       {isSidebarOpen && (

@@ -7,7 +7,7 @@ import HomePage from '@/pages/dashboard';
 import InboxPage from '@/pages/inbox';
 import CalendarPage from '@/pages/calendar';
 import SearchPage from '@/pages/search';
-import SettingsPage from '@/pages/settings';
+import IntegrationsPage from '@/pages/integrations';
 import LoginPage from '@/pages/login';
 import { authClient } from './lib/auth-client';
 
@@ -69,7 +69,8 @@ export default function App() {
         <Route path="inbox" element={<InboxPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="search" element={<SearchPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings" element={<Navigate to="/dashboard/settings/integrations" replace />} />
+        <Route path="settings/integrations" element={<IntegrationsPage />} />
       </Route>
     </Routes>
   );

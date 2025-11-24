@@ -42,8 +42,14 @@ const items = [
   // },
   {
     title: 'Settings',
-    url: '/dashboard/settings',
+    url: '/dashboard/settings/integrations',
     icon: Settings,
+    subItems: [
+      {
+        title: 'Integrations',
+        url: '/dashboard/settings/integrations',
+      },
+    ],
   },
 ];
 
@@ -51,10 +57,6 @@ export function AppSidebar() {
   const location = useLocation();
   const sessionQuery = authClient.useSession();
   const user = sessionQuery.data?.user;
-  const searchParams = new URLSearchParams(location.search);
-  const currentView = searchParams.get('view') || 'month';
-
-  const isCalendarActive = location.pathname.startsWith('/dashboard/calendar');
 
   return (
     <Sidebar collapsible="icon">
@@ -64,39 +66,38 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const isCalendar = item.title === 'Calendar';
+                const isActive = item.exact
+                  ? location.pathname === item.url
+                  : location.pathname.startsWith(item.url);
+                const hasSubItems = item.subItems && item.subItems.length > 0;
+                const isSettingsPage = location.pathname.startsWith('/dashboard/settings');
+
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      isActive={
-                        item.exact
-                          ? location.pathname === item.url
-                          : location.pathname.startsWith(item.url)
-                      }
+                      isActive={isActive}
                     >
                       <Link to={item.url}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
-                    {isCalendar && isCalendarActive && (
+                    {hasSubItems && isSettingsPage && (
                       <SidebarMenuSub>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton asChild isActive={currentView === 'month'}>
-                            <Link to="/dashboard/calendar?view=month">Month</Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton asChild isActive={currentView === 'week'}>
-                            <Link to="/dashboard/calendar?view=week">Week</Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton asChild isActive={currentView === 'day'}>
-                            <Link to="/dashboard/calendar?view=day">Day</Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
+                        {item.subItems.map((subItem) => {
+                          const isSubItemActive = location.pathname === subItem.url;
+
+                          return (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubButton asChild isActive={isSubItemActive}>
+                                <Link to={subItem.url}>
+                                  <span>{subItem.title}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                       </SidebarMenuSub>
                     )}
                   </SidebarMenuItem>

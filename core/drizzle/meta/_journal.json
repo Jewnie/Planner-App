@@ -15,6 +15,13 @@
       "when": 1763330828504,
       "tag": "0001_add_calendar_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763998898480,
+      "tag": "0002_young_rocket_raccoon",
+      "breakpoints": true
     }
   ]
 }

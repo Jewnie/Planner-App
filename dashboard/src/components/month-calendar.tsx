@@ -210,7 +210,6 @@ export default function MonthCalendar({
 
                   // Ensure all classes are always present as string literals for Tailwind scanning
                   const borderTopClass = weekIndex === 0 ? 'border-t' : '';
-                  const monthClass = !inMonth ? 'bg-gray-100 opacity-50' : '';
                   const selectionClass = isInSelection(day) ? 'bg-green-50' : '';
                   const weekendClass = isWeekend && inMonth ? 'bg-blue-50' : '';
 
@@ -221,9 +220,9 @@ export default function MonthCalendar({
                       className={cn(
                         'text-left flex flex-col justify-start overflow-visible min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
                         borderTopClass,
-                        monthClass,
                         selectionClass,
                         weekendClass,
+                        !inMonth ? 'bg-gray-100' : '',
                       )}
                       aria-pressed={isInSelection(day)}
                     >
@@ -328,7 +327,7 @@ export default function MonthCalendar({
                                     <span className="font-medium">{event.title}</span>
                                     {startTime && (
                                       <span className="text-muted-foreground ml-1">
-                                        {startTime}
+                                        {format(startTime, 'HH:mm')}
                                       </span>
                                     )}
                                   </span>

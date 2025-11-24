@@ -48,8 +48,8 @@ export default function DayCalendar({
     const events: CalendarEvent[] = [];
 
     for (const event of items) {
-      const startRaw = event?.start?.dateTime || event?.start?.date;
-      const endRaw = event?.end?.dateTime || event?.end?.date;
+      const startRaw = event?.startTime;
+      const endRaw = event?.endTime;
 
       if (!startRaw) {
         console.warn('Event missing start date:', event);
@@ -78,18 +78,27 @@ export default function DayCalendar({
         }
 
         // For all-day events (date-only), ensure end date is at end of day
-        if (event?.start?.date && !event?.start?.dateTime) {
+        if (event?.allDay) {
           // All-day event - end should be end of the end date
           end = new Date(end);
           end.setHours(23, 59, 59, 999);
         }
 
         events.push({
-          id: event.id || `event-${Math.random()}`,
-          calendarId: event.calendarId,
-          title: event.summary || 'Untitled event',
-          start,
-          end,
+          id: event.id || '',
+          createdAt: event.createdAt || null,
+          updatedAt: event.updatedAt || null,
+          calendarId: event.calendarId || '',
+          providerEventId: event.providerEventId || '',
+          title: event.title || '',
+          description: event.description || null,
+          location: event.location || null,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          allDay: event.allDay || null,
+          recurringRule: event.recurringRule || null,
+          timeZone: event.timeZone || null,
+          rawData: event.rawData,
         });
       } catch (error) {
         console.error('Error parsing event dates:', error, event);
@@ -110,7 +119,7 @@ export default function DayCalendar({
     }
 
     dayEvents.forEach((event) => {
-      const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
+      const start = new Date(event.startTime);
       const hour = start.getHours();
 
       if (hour >= 0 && hour < 24) {
@@ -148,21 +157,13 @@ export default function DayCalendar({
               {/* Events for this hour */}
               <div className="flex-1 p-2 relative">
                 {eventsByHour[hour]?.map((event, index) => {
-                  const start =
-                    typeof event.start === 'string' ? new Date(event.start) : event.start;
-                  const end = event.end
-                    ? typeof event.end === 'string'
-                      ? new Date(event.end)
-                      : event.end
-                    : start;
+                  const start = new Date(event.startTime);
+                  const end = new Date(event.endTime);
 
                   const calendarId = event.calendarId || event.id?.toString() || `event-${index}`;
                   const backgroundColor = getDeterministicColor(calendarId, 'bg');
 
-                  const isAllDay =
-                    event.start && typeof event.start === 'string'
-                      ? event.start.includes('T') === false
-                      : false;
+                  const isAllDay = event.allDay;
 
                   return (
                     <div

@@ -31,29 +31,23 @@ export const auth = betterAuth({
     google: {
       clientId: googleClientId,
       clientSecret: googleClientSecret,
+      accessType: "offline", 
+      prompt: "select_account consent", 
       scope: [
         "openid",
         "email",
         "profile",
         "https://www.googleapis.com/auth/calendar",
       ],
-      authorization: {
-        params: {
-          access_type: "offline",         // needed for refresh tokens
-          prompt: "consent",              // forces re-consent when scopes change
-        },
-      },
     },
   } : undefined,
+  
 
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
   }),
 
-  cookies: {
-    session: { secure: true },
-  },
-
   plugins: [],
 });
+

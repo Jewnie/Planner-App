@@ -174,6 +174,19 @@ export default function MonthCalendar({
     }
   }
 
+  const renderEventsMoreInfo = (dayEvents: CalendarEvent[], day: Date) => {
+    // Count events that start on this day
+    const eventsStartingToday = dayEvents.filter((event) => {
+      const eventStartDate = startOfDay(new Date(event.startTime));
+      const currentDayDate = startOfDay(day);
+      return isSameDay(eventStartDate, currentDayDate);
+    });
+    const remaining = eventsStartingToday.length - 4;
+    return remaining > 0 ? (
+      <div className="text-xs mt-1 text-muted-foreground truncate">+{remaining} more</div>
+    ) : null;
+  };
+
   function isInSelection(date: Date) {
     if (!selectedStart) return false;
     const day = startOfDay(date);
@@ -185,7 +198,7 @@ export default function MonthCalendar({
 
   return (
     <div className="w-full h-full flex min-w-0 flex-col">
-      <div className="flex w-full min-w-0 h-full overflow-auto flex-col">
+      <div className="flex w-full min-w-0 h-full overflow-x-auto overflow-y-hidden flex-col">
         <div className="grid grid-cols-7 w-full text-sm border-t shrink-0" style={{ gap: 0 }}>
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
             <div
@@ -218,7 +231,7 @@ export default function MonthCalendar({
                       key={day.toISOString()}
                       onClick={() => handleDateClick(day)}
                       className={cn(
-                        'text-left flex flex-col justify-start overflow-visible min-h-[100px] border-r border-b [&:nth-child(7n)]:border-r-0 border-border',
+                        'text-left flex flex-col justify-start overflow-visible min-h-[100px] border-r border-b nth-[7n]:border-r-0 border-border',
                         borderTopClass,
                         selectionClass,
                         weekendClass,
@@ -261,7 +274,7 @@ export default function MonthCalendar({
                             return 0; // keep original order if both are same category
                           });
 
-                          return sortedEvents.slice(0, 5).map((event, index) => {
+                          return sortedEvents.slice(0, 4).map((event, index) => {
                             if (weekEvents.includes(event.id)) {
                               return null;
                             } else {
@@ -357,21 +370,8 @@ export default function MonthCalendar({
                             );
                           });
                         })()}
-                        {(() => {
-                          // Count events that start on this day
-                          const eventsStartingToday = dayEvents.filter((event) => {
-                            const eventStartDate = startOfDay(new Date(event.startTime));
-                            const currentDayDate = startOfDay(day);
-                            return isSameDay(eventStartDate, currentDayDate);
-                          });
-                          const remaining = eventsStartingToday.length - 5;
-                          return remaining > 0 ? (
-                            <div className="text-xs mt-1 text-muted-foreground truncate">
-                              +{remaining} more
-                            </div>
-                          ) : null;
-                        })()}
                       </div>
+                      {renderEventsMoreInfo(dayEvents, day)}
                     </button>
                   );
                 })}

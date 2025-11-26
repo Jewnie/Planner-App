@@ -1,0 +1,1 @@
+ALTER TABLE "integration" ADD CONSTRAINT "integration_account_id_type_unique" UNIQUE("account_id","type");

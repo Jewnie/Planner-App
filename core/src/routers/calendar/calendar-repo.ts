@@ -3,6 +3,7 @@ import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
 
 import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
+import { account } from "../../db/auth-schema.js";
 import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -50,25 +51,31 @@ export function getDayRange(date: Date) {
 /**
  * Get calendar provider for a user's account ID
  */
-export async function getCalendarProviderForAccount(accountId: string) {
-  return db
+export async function getCalendarProvidersForAccount(params: { accountId: string }) {
+  return await db
     .select()
     .from(calendarProviders)
-    .where(eq(calendarProviders.accountId, accountId))
-    .then(rows => rows[0]);
+    .where(eq(calendarProviders.accountId, params.accountId))
+    
+}
+
+export const assertUserAccountExists = async (userId: string) => {
+  const response = await db.select().from(account).where(eq(account.userId, userId));
+  if (!response) {
+    throw new Error("User account not found");
+  }
+  return response[0];
 }
 
 /**
  * Get all calendars for a provider
  */
-export async function getCalendarsForProvider(providerId: string) {
+export async function getCalendarsForProviders(params: { providerIds: string[] }) {
   return db
     .select()
     .from(calendars)
-    .where(eq(calendars.providerId, providerId));
+    .where(inArray(calendars.providerId, params.providerIds));
 }
-
-
 
 
 export const listEventsByAccountId = async (
@@ -81,13 +88,13 @@ export const listEventsByAccountId = async (
 
 
   // Get the calendar provider for this account
-  const provider = await getCalendarProviderForAccount(accountId);
-  if (!provider) {
+  const providers = await getCalendarProvidersForAccount({ accountId });
+  if (!providers) {
     return [];
   }
 
   // Get all calendars for this provider
-  const userCalendars = await getCalendarsForProvider(provider.id);
+  const userCalendars = await getCalendarsForProviders({ providerIds: providers.map(p => p.id) });
   if (userCalendars.length === 0) {
     return [];
   }

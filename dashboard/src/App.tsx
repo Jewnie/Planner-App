@@ -47,7 +47,7 @@ function AppLayout() {
               <h1 className="text-lg font-semibold">Planner app</h1>
             </div>
           </header> */}
-          <div className="flex flex-1 flex-col h-full max-h-screen">
+          <div className="flex flex-1 flex-col w-full h-full max-h-screen">
             <Outlet />
           </div>
         </ProtectedRoute>
@@ -69,7 +69,10 @@ export default function App() {
         <Route path="inbox" element={<InboxPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="search" element={<SearchPage />} />
-        <Route path="settings" element={<Navigate to="/dashboard/settings/integrations" replace />} />
+        <Route
+          path="settings"
+          element={<Navigate to="/dashboard/settings/integrations" replace />}
+        />
         <Route path="settings/integrations" element={<IntegrationsPage />} />
       </Route>
     </Routes>

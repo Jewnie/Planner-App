@@ -1,34 +1,20 @@
-import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import outlookLogo from '@/assets/outlook-logo.png';
+import { Badge } from '@/components/ui/badge';
 
 export default function IntegrationsPage() {
-  const [syncStatus, setSyncStatus] = useState<{
-    workflowId?: string;
-    status?: string;
-    error?: string;
-  } | null>(null);
+  const syncMutation = trpc.calendar.syncCalendar.useMutation();
+  const integrationsQuery = trpc.integration.getIntegrations.useQuery();
 
-  const syncMutation = trpc.calendar.syncCalendar.useMutation({
-    onSuccess: (data: { workflowId: string; runId: string; status: string }) => {
-      setSyncStatus({
-        workflowId: data.workflowId,
-        status: data.status,
-        error: undefined,
-      });
-    },
-    onError: (error) => {
-      console.error('Sync failed:', error);
-      setSyncStatus({
-        error: error.message || 'Failed to start sync',
-      });
-    },
-  });
+  console.log(integrationsQuery.data);
 
-  const handleSync = () => {
-    syncMutation.mutate(undefined);
+  const calendarProvidersQuery = trpc.calendar.getCalendarProviders.useQuery();
+  const hasGoogleCalendarLink = calendarProvidersQuery.data?.some((p) => p.name === 'google');
+  const hasOutlookCalendarLink = calendarProvidersQuery.data?.some((p) => p.name === 'outlook');
+
+  const handleSync = (type: 'google' | 'outlook') => {
+    syncMutation.mutate({ calendarType: type });
   };
 
   return (
@@ -37,7 +23,7 @@ export default function IntegrationsPage() {
         <h2 className="text-lg font-semibold text-card-foreground mb-6">Integrations</h2>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col rounded-lg border p-4">
+          <div className="flex flex-col rounded-lg border p-4 bg-gray-50">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white border shrink-0">
@@ -65,46 +51,25 @@ export default function IntegrationsPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-card-foreground">Google Calendar Sync</h3>
+                <h3 className="text-sm font-medium text-card-foreground">Google Calendar</h3>
+                {hasGoogleCalendarLink ? (
+                  <Badge variant="outline" className="border-green-400">
+                    {integrationsQuery.data?.find((i) => i.type === 'google')?.status}
+                  </Badge>
+                ) : null}
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 Sync your Google Calendar events to your planner
               </p>
-              {syncStatus?.error && (
-                <div className="mb-4 text-xs text-destructive">{syncStatus.error}</div>
+              {syncMutation.error && (
+                <div className="mb-4 text-xs text-destructive">{syncMutation.error.message}</div>
               )}
             </div>
-            <Button
-              onClick={handleSync}
-              disabled={syncMutation.isPending}
-              variant="outline"
-              className="w-full"
-            >
-              {syncMutation.isPending ? (
-                <>
-                  <Spinner className="size-4" />
-                  <span>Syncing...</span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="size-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  <span>Sync Now</span>
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => handleSync('google')} variant="outline" className="flex-1">
+                {hasGoogleCalendarLink ? 'Re-sync' : 'Link Google Calendar'}
+              </Button>
+            </div>
           </div>
           <div className="flex flex-col rounded-lg border p-4 opacity-60">
             <div className="flex-1">
@@ -113,12 +78,22 @@ export default function IntegrationsPage() {
                   <img src={outlookLogo} alt="Outlook" className="w-full h-full object-contain" />
                 </div>
                 <h3 className="text-sm font-medium text-card-foreground">Outlook Calendar Sync</h3>
+                {hasOutlookCalendarLink ? (
+                  <Badge variant="outline" className="border-green-400">
+                    Linked
+                  </Badge>
+                ) : null}
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 Sync your Outlook Calendar events to your planner
               </p>
             </div>
-            <Button disabled variant="outline" className="w-full">
+            <Button
+              onClick={() => handleSync('outlook')}
+              disabled
+              variant="outline"
+              className="w-full"
+            >
               <span>Coming Soon</span>
             </Button>
           </div>

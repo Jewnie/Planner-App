@@ -4,11 +4,11 @@ import type { CalendarInfo } from './activities.js';
 
 // Configure activity retry policy
 const activityOptions = {
-  startToCloseTimeout: '5 minutes',
+  startToCloseTimeout: 5 * 60 * 1000, // 5 minutes in milliseconds
   retry: {
-    initialInterval: '1s',
+    initialInterval: 1000, // 1 second in milliseconds
     backoffCoefficient: 2,
-    maximumInterval: '100s',
+    maximumInterval: 100 * 1000, // 100 seconds in milliseconds
     maximumAttempts: 3,
   },
 };
@@ -16,12 +16,13 @@ const activityOptions = {
 const {
   fetchGoogleCalendars,
   batchDownloadCalendarEvents,
-  assertCalendarProviderExists,
+  getCalendarProvider,
   upsertCalendar,
   upsertEvents,
   updateCalendarProviderSyncToken,
   updateCalendarSyncToken,
   getCalendarSyncToken,
+  handleIntegrationUpsertion,
 } = proxyActivities<typeof activities>(activityOptions);
 
 export interface SyncWorkflowInput {
@@ -60,7 +61,8 @@ export async function syncGoogleCalendarWorkflow(
     // Step 1: Ensure calendar provider exists in database
     
 
-  const provider = await assertCalendarProviderExists({accountId: input.accountId, providerName: 'google'});
+  const provider = await getCalendarProvider({accountId: input.accountId, providerName: 'google'});
+  await handleIntegrationUpsertion({accountId: input.accountId, type: 'google', status: 'syncing'});
 
 
   let accountSyncToken: string  | null = provider.syncToken; 
@@ -162,6 +164,8 @@ export async function syncGoogleCalendarWorkflow(
         // Continue with next calendar instead of failing entire workflow
       }
     }
+
+    await handleIntegrationUpsertion({accountId: input.accountId, type: 'google', status: 'synced'});
 
     log.info('Google Calendar sync workflow completed');
 

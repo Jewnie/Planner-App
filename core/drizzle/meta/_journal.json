@@ -22,6 +22,20 @@
       "when": 1763998898480,
       "tag": "0002_young_rocket_raccoon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764169004751,
+      "tag": "0003_tired_thaddeus_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1764169623873,
+      "tag": "0004_mighty_menace",
+      "breakpoints": true
     }
   ]
 }

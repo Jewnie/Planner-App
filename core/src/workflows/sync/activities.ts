@@ -3,6 +3,8 @@ import { db } from '../../db.js';
 import { calendarProviders, calendars, events, eventAttendees } from '../../db/calendar-schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getValidGoogleOAuthClientForActivity } from '../../lib/google-auth.js';
+import { integrationStatuses, integrationTypes } from '../../db/integration-schema.js';
+import { upsertIntegration } from '../../routers/integrations/integration-repo.js';
 
 export interface GoogleCalendarEventNormalized {
   id: string;
@@ -100,6 +102,14 @@ export async function fetchGoogleCalendars(
   }
 }
 
+export async function handleIntegrationUpsertion(params:{
+  accountId: string,
+  type: typeof integrationTypes[number],
+  status: typeof integrationStatuses[number],
+}) {
+  await upsertIntegration(params);
+}
+
 export async function updateCalendarProviderSyncToken(params:{
 
   accountId: string,
@@ -192,15 +202,15 @@ const response = await calendarClient.events.list({
 }
 
 /**
- * Save or update calendar provider in database
+ * fetch or insert calendar provider in database
  */
-export async function assertCalendarProviderExists(params:{
+export async function getCalendarProvider(params:{
   accountId: string,
   providerName: string,
 }
 ) {
   try {
-    console.log(`[Activity] Asserting calendar provider exists: ${params.providerName} for account: ${params.accountId}`);
+    console.log(`[Activity] checking if calendar provider exists: ${params.providerName} for account: ${params.accountId}`);
     
     // Check if provider already exists
     const existing = await db
@@ -213,6 +223,7 @@ export async function assertCalendarProviderExists(params:{
       }
 
     // Create new provider
+    console.log(`[Activity] creating new calendar provider: ${params.providerName} for account: ${params.accountId}`);
     const newProvider = await db
       .insert(calendarProviders)
       .values({
@@ -228,6 +239,8 @@ export async function assertCalendarProviderExists(params:{
     throw error;
   }
 }
+
+
 
 /**
  * Save or update calendar in database

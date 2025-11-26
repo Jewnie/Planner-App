@@ -1,8 +1,10 @@
 import { router } from "../trpc.js";
-import { appRouter as calendarRouter } from "./calendar/calendar-router.js";
+import { calendarRouter } from "./calendar/calendar-router.js";
+import { integrationRouter } from "./integrations/integration-router.js";
 
 export const appRouter = router({
   calendar: calendarRouter,
+  integration: integrationRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -2,6 +2,7 @@ import { initTRPC } from "@trpc/server";
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth.js";
+import { assertUserAccountExists } from "./routers/calendar/calendar-repo.js";
 
 export async function createContext({ req, res }: CreateExpressContextOptions) {
   const session = await auth.api.getSession({
@@ -23,7 +24,11 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.session || !ctx.session.user) {
     throw new Error("UNAUTHORIZED");
   }
-  return next({ ctx });
+  const account = await assertUserAccountExists(ctx.session.user.id);
+  if (!account) {
+    throw new Error("No account found for user");
+  }
+  return next({ ctx: { ...ctx, accountId: account.id } });
 });
 
 

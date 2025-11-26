@@ -3,25 +3,22 @@ import { router, protectedProcedure } from "../../trpc.js";
 import { getGoogleAccountForUser } from "../user/user-repo.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { listEventsByAccountId, getCalendarProviderForAccount, getCalendarsForProvider } from "./calendar-repo.js";
+import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders } from "./calendar-repo.js";
 import { formatDateToYYYYMMDD } from "../../lib/date-utils.js";
-export const appRouter = router({
+export const calendarRouter = router({
  
 
 
 
   listCalendars: protectedProcedure.query(async ({ ctx }) => {
-    const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
-    if (!userAccount) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
-    }
     
-    const provider = await getCalendarProviderForAccount(userAccount.id);
-    if (!provider) {
+    
+    const providers = await getCalendarProvidersForAccount({ accountId: ctx.accountId });
+    if (!providers) {
       return [];
     }
     
-    const userCalendars = await getCalendarsForProvider(provider.id);
+    const userCalendars = await getCalendarsForProviders({ providerIds: providers.map(p => p.id) });
     return userCalendars.map(calendar => ({
       id: calendar.id,
       name: calendar.name,
@@ -60,29 +57,21 @@ export const appRouter = router({
   syncCalendar: protectedProcedure
     .input(
       z.object({
-        timeMin: z.string().optional(), // ISO date string
-        timeMax: z.string().optional(), // ISO date string
-      }).optional()
+      calendarType: z.enum(["google","outlook"]),
+    })
     )
     .mutation(async ({ ctx, input }) => {
-      const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
-      if (!userAccount) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "No Google account linked" });
-      }
-
       try {
         const client = await getTemporalClient();
         
-        const workflowId = `calendar-sync-${ctx.session!.user.id}-${Date.now()}`;
+        const workflowId = `calendar-sync-${ctx.accountId}-${Date.now()}-${input?.calendarType}`;
         
-        // Note: We use the workflow type name as a string since workflows
-        // can only be imported in the worker context
+        // TODO handle type of calendar sync GOOGLE/OUTLOOK
         const handle = await client.workflow.start('syncGoogleCalendarWorkflow', {
           args: [{
-            accountId: userAccount.id,
+            accountId: ctx.accountId,
             userId: ctx.session!.user.id,
-            timeMin: input?.timeMin,
-            timeMax: input?.timeMax,
+            calendarType: input?.calendarType,
           }],
           taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'calendar-sync-queue',
           workflowId,
@@ -116,6 +105,17 @@ export const appRouter = router({
       }
     }),
 
+  getCalendarProviders: protectedProcedure.query(async ({ ctx }) => {
+
+    
+    const providers = await getCalendarProvidersForAccount({ accountId: ctx.accountId });
+    if (!providers) {
+      return [];
+    }
+
+    return providers;
+  }),
+
   getSyncStatus: protectedProcedure
     .input(z.object({ workflowId: z.string() }))
     .query(async ({ input }) => {
@@ -145,6 +145,6 @@ export const appRouter = router({
 
 });
 
-export type AppRouter = typeof appRouter;
+export type AppRouter = typeof calendarRouter;
 
 

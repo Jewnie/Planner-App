@@ -97,7 +97,7 @@ export function EventSidebar(props: {
   const dateLabel = format(selectedDate, 'EEEE, MMMM d, yyyy');
 
   return (
-    <Sidebar className="w-96" side="right">
+    <Sidebar className="xl:w-96 lg:w-74 md:w-64 sm:w-64" side="right">
       <SidebarContent className="bg-white">
         <SidebarHeader>
           <div className="flex items-start justify-between w-full">

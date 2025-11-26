@@ -59,7 +59,7 @@ export function AppSidebar() {
   const user = sessionQuery.data?.user;
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar className="w-52" collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Plnnr-app</SidebarGroupLabel>
@@ -74,10 +74,7 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive}>
                       <Link to={item.url}>
                         <item.icon />
                         <span>{item.title}</span>

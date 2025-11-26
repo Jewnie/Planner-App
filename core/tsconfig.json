@@ -7,9 +7,7 @@
     "verbatimModuleSyntax": false,
     "skipLibCheck": true,
     "strict": true,
-    "outDir": "dist",
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+    "outDir": "dist"
   },
   "include": ["src", "drizzle.config.ts"]
 }

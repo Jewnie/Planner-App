@@ -72,10 +72,33 @@ app.get("/api/session", async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch session" })
   }
 })
-if(process.env.NODE_ENV === "dev") {
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`)
-})
+
+
+app.post("/google-calendar-webhook", (req, res) => {
+  const headers = req.headers;
+
+  console.log("Google webhook headers:", headers);
+  console.log("Webhook body:", req.body);
+  
+
+  // Google requires a 200 response immediately
+  res.status(200).send();
+
+  // TODO: enqueue a job to process the change asynchronously
+});
+
+if (process.env.NODE_ENV === "dev") {
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`)
+    if (!process.env.WEBHOOK_URL && !process.env.API_URL) {
+      console.warn("⚠️  WEBHOOK_URL or API_URL not set. Google Calendar webhooks will not work.");
+    }
+  })
+} else {
+  // In production, ensure API_URL is set
+  if (!process.env.API_URL) {
+    console.warn("Warning: API_URL environment variable is not set. Google Calendar webhooks may not work.");
+  }
 }
 
 export default app

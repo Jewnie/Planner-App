@@ -15,6 +15,7 @@ const activityOptions = {
 
 const {
   fetchGoogleCalendars,
+  createCalendarWatch,
   batchDownloadCalendarEvents,
   getCalendarProvider,
   upsertCalendar,
@@ -88,17 +89,22 @@ export async function syncGoogleCalendarWorkflow(
           calendarId: calendar.id,
         });
 
+        const watchData = await createCalendarWatch({accountId: input.accountId, calendarId: calendar.id});
+
         // Upsert calendar in database
-        const calendarId = await upsertCalendar(
-          provider.id,
-          calendar.id,
-          calendar.summary,
-          calendar.foregroundColor,
-          {
-            googleCalendarId: calendar.id,
+        const calendarId = await upsertCalendar({
+          providerId: provider.id,
+          googleCalendarId: calendar.id,
+          name: calendar.summary,
+          color: calendar.foregroundColor,
+          metadata: {
             colorId: calendar.colorId,
             backgroundColor: calendar.backgroundColor,
             foregroundColor: calendar.foregroundColor,
+          },
+          channelId:watchData?.channelId ?? '',
+          resourceId: watchData?.resourceId ?? '',
+            expiration: watchData?.expiration ? new Date(Number(watchData.expiration)) : new Date(),
           }
         );
 

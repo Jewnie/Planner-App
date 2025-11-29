@@ -17,6 +17,9 @@ export const calendars = pgTable("calendars", {
   color: text("color"),
   metadata: json("metadata"),
   syncToken: text("sync_token"),
+  channelId: text("channel_id"),
+  resourceId: text("resource_id"),
+  expiration: timestamp("expiration"),
 });
 
 // Main events table

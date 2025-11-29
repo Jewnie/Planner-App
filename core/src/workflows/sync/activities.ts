@@ -5,7 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { getValidGoogleOAuthClientForActivity } from '../../lib/google-auth.js';
 import { integrationStatuses, integrationTypes } from '../../db/integration-schema.js';
 import { upsertIntegration } from '../../routers/integrations/integration-repo.js';
-
+import { z } from 'zod';
 export interface GoogleCalendarEventNormalized {
   id: string;
   title?: string;                // formerly summary
@@ -106,8 +106,13 @@ export async function handleIntegrationUpsertion(params:{
   accountId: string,
   type: typeof integrationTypes[number],
   status: typeof integrationStatuses[number],
+
 }) {
-  await upsertIntegration(params);
+  await upsertIntegration({
+    accountId: params.accountId,
+    type: params.type,
+    status: params.status,
+  });
 }
 
 export async function updateCalendarProviderSyncToken(params:{
@@ -245,23 +250,26 @@ export async function getCalendarProvider(params:{
 /**
  * Save or update calendar in database
  */
-export async function upsertCalendar(
+export async function upsertCalendar(params:{
   providerId: string,
   googleCalendarId: string,
   name: string,
-  color?: string,
-  metadata?: Record<string, unknown>
-): Promise<string> {
+  color?: string,  
+  metadata?: Record<string, unknown>,
+  channelId: string,
+  resourceId: string,
+  expiration: Date,
+}): Promise<string> {
   // Check if calendar already exists (by provider and Google calendar ID in metadata)
   const existing = await db
     .select()
     .from(calendars)
-    .where(eq(calendars.providerId, providerId))
+    .where(eq(calendars.providerId, params.providerId))
     .then(rows => {
       // Try to find by matching Google calendar ID in metadata
       return rows.find(cal => {
         const meta = cal.metadata as Record<string, unknown> | null;
-        return meta?.googleCalendarId === googleCalendarId;
+        return meta?.googleCalendarId === params.googleCalendarId;
       });
     });
 
@@ -270,9 +278,12 @@ export async function upsertCalendar(
     const [updated] = await db
       .update(calendars)
       .set({
-        name,
-        color,
-        metadata: metadata || existing.metadata,
+        name: params.name,
+        color: params.color,
+        metadata: params.metadata || existing.metadata,
+        channelId: params.channelId,
+        resourceId: params.resourceId,
+        expiration: params.expiration,
       })
       .where(eq(calendars.id, existing.id))
       .returning();
@@ -284,10 +295,13 @@ export async function upsertCalendar(
   const [calendar] = await db
     .insert(calendars)
     .values({
-      providerId,
-      name,
-      color,
-      metadata: metadata || { googleCalendarId },
+      providerId: params.providerId,
+      name: params.name,
+      color: params.color,
+      metadata: params.metadata || { googleCalendarId: params.googleCalendarId },
+      channelId: params.channelId,
+      resourceId: params.resourceId,
+      expiration: params.expiration,
     })
     .returning();
 
@@ -419,5 +433,39 @@ export async function upsertEvents(
   }
 
   return { created, updated };
+}
+
+export async function createCalendarWatch(params:{
+  calendarId: string,
+  accountId: string,
+}) {
+  const oauth2 = await getGoogleOAuthClient(params.accountId);
+  const calendar = google.calendar({ version: "v3", auth: oauth2 });
+
+
+  const channelSchema = z.string();
+  
+  // Get webhook URL - use API_URL in production, or WEBHOOK_URL if set (for tunneling service in dev)
+  const googleWebhookUrl: string = process.env.WEBHOOK_URL || process.env.API_URL || '';
+  
+  if (!googleWebhookUrl) {
+    throw new Error('WEBHOOK_URL or API_URL environment variable must be set for Google Calendar webhooks');
+  }
+
+const channelId = channelSchema.parse(crypto.randomUUID()); // ✅ type is strin
+  const res = await calendar.events.watch({
+    calendarId: params.calendarId,
+    requestBody: {
+      id: channelId,
+      type: "web_hook",
+      address: `${googleWebhookUrl}/google-calendar-webhook`, // your public HTTPS webhook
+    },
+    
+  });
+
+  console.log("Watch created:", res.data);
+
+  // Save channelId, resourceId, and expiration in DB for future renewals
+  return {channelId: res.data.id, resourceId: res.data.resourceId, expiration: res.data.expiration};
 }
 

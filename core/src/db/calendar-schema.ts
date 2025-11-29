@@ -17,9 +17,17 @@ export const calendars = pgTable("calendars", {
   color: text("color"),
   metadata: json("metadata"),
   syncToken: text("sync_token"),
-  channelId: text("channel_id"),
-  resourceId: text("resource_id"),
+});
+
+export const calendarWatches = pgTable("calendar_watches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  calendarId: uuid("calendar_id").notNull().references(() => calendars.id),
+  providerId: uuid("provider_id").notNull().references(() => calendarProviders.id),
+  channelId: text("channel_id").notNull(),
+  resourceId: text("resource_id").notNull(),
   expiration: timestamp("expiration"),
+  createdAt: timestamp("created_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 // Main events table

@@ -89,7 +89,7 @@ export async function syncGoogleCalendarWorkflow(
           calendarId: calendar.id,
         });
 
-        const watchData = await createCalendarWatch({accountId: input.accountId, calendarId: calendar.id});
+        const watchData = await createCalendarWatch({accountId: input.accountId, calendarId: calendar.id, providerId: provider.id});
 
         // Upsert calendar in database
         const calendarId = await upsertCalendar({

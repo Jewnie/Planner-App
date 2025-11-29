@@ -2,9 +2,9 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay 
 import { UTCDate } from "@date-fns/utc";
 import { db } from "../../db.js";
 
-import { calendarProviders, calendars, events } from "../../db/calendar-schema.js";
+import { calendarProviders, calendars, calendarWatches, events } from "../../db/calendar-schema.js";
 import { account } from "../../db/auth-schema.js";
-import { eq, and, or, gte, lte, inArray, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, gte, lte, inArray, isNull, isNotNull, gt, desc } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
 import RRulePkg from "rrule";
@@ -220,6 +220,17 @@ export const listEventsByAccountId = async (
 
   // Transform to API format
   return allEvents
+}
+
+export const getExistingCalendarWatchDataForCalendar = async (params: { calendarId: string, providerId: string }) => {
+  return await db.select({id: calendarWatches.id, channelId: calendarWatches.channelId, resourceId: calendarWatches.resourceId}).from(calendarWatches).where(
+    and(
+      eq(calendarWatches.calendarId, params.calendarId), 
+      eq(calendarWatches.providerId, params.providerId), 
+      isNotNull(calendarWatches.channelId), 
+      gt(calendarWatches.expiration, new Date())
+    )
+    ).orderBy(desc(calendarWatches.createdAt))
 }
 
 

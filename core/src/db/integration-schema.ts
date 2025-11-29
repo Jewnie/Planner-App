@@ -11,7 +11,7 @@ export const integration = pgTable("integration", {
   accountId: text("account_id").notNull().references(() => account.id, { onDelete: "cascade" }),
   status: text("status").notNull().$type<typeof integrationStatuses[number]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at"),
 }, (table) => ({
   accountTypeUnique: unique().on(table.accountId, table.type),
 }));

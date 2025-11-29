@@ -21,14 +21,15 @@ export const calendars = pgTable("calendars", {
 
 export const calendarWatches = pgTable("calendar_watches", {
   id: uuid("id").primaryKey().defaultRandom(),
-  calendarId: uuid("calendar_id").notNull().references(() => calendars.id),
-  providerId: uuid("provider_id").notNull().references(() => calendarProviders.id),
+  calendarId: text("calendar_id").notNull(),
+  providerId: text("provider_id").notNull(),
   channelId: text("channel_id").notNull(),
   resourceId: text("resource_id").notNull(),
   expiration: timestamp("expiration"),
   createdAt: timestamp("created_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
-});
+}
+);
 
 // Main events table
 export const events = pgTable("events", {

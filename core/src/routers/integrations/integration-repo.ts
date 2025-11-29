@@ -11,6 +11,7 @@ export const upsertIntegration = async (params:{
     accountId: params.accountId,
     type: params.type,
     status: params.status,
+    
   }).onConflictDoUpdate({
     target: [integration.accountId, integration.type],
     set: {

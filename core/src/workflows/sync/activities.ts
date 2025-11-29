@@ -464,6 +464,8 @@ export async function createCalendarWatch(params:{
     },
   });
 
+  console.log(res.data.expiration, '---------------------EXPIRATION--------------------');
+
   if(res.status === 200){
     try {
     await db.insert(calendarWatches).values({
@@ -471,7 +473,7 @@ export async function createCalendarWatch(params:{
       providerId: params.providerId,
       channelId: channelId,
       resourceId: res.data.resourceId as string,
-      expiration: new Date(res.data.expiration as string),
+      expiration: new Date(Number(res.data.expiration)),
     });
     if(existingWatchData.length > 0){
       const stoppedWatch = await calendar.channels.stop({

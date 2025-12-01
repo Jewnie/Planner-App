@@ -1,0 +1,12 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm install --prefix core && npm install --prefix dashboard && npm run build --prefix core && npm run build --prefix dashboard"
+  },
+  "deploy": {
+    "startCommand": "cd core && npm start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

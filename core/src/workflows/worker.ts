@@ -163,24 +163,6 @@ async function run() {
   }
 }
 
-run().catch((err) => {
-  console.error('❌ Worker failed to start:', err);
-  const errorMessage = err instanceof Error ? err.message : String(err);
-  const errorStack = err instanceof Error ? err.stack : undefined;
-  
-  console.error('\n=== DIAGNOSTIC INFORMATION ===');
-  console.error('Error:', errorMessage);
-  if (errorStack) {
-    console.error('Stack:', errorStack);
-  }
-  console.error('\nPlease check:');
-  console.error('1. Environment variables are set correctly');
-  console.error('2. TEMPORAL_ADDRESS points to your Temporal Cloud instance');
-  console.error('3. TEMPORAL_API_KEY is valid and not expired');
-  console.error('4. TEMPORAL_NAMESPACE matches your Temporal Cloud namespace');
-  console.error('5. Network connectivity to Temporal Cloud');
-  console.error('==============================\n');
-  
-  process.exit(1);
-});
+run()
+
 

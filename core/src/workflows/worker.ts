@@ -34,13 +34,32 @@ const activities = {
 async function run() {
   const taskQueue = process.env.TEMPORAL_TASK_QUEUE || 'calendar-sync-queue';
   
+  // Log environment for debugging
+  console.log('Worker starting...');
+  console.log('Environment check:');
+  console.log(`  NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+  console.log(`  TEMPORAL_ADDRESS: ${process.env.TEMPORAL_ADDRESS ? 'set' : 'NOT SET'}`);
+  console.log(`  TEMPORAL_NAMESPACE: ${process.env.TEMPORAL_NAMESPACE ? 'set' : 'NOT SET'}`);
+  console.log(`  TEMPORAL_API_KEY: ${process.env.TEMPORAL_API_KEY ? 'set' : 'NOT SET'}`);
+  console.log(`  Task Queue: ${taskQueue}`);
+  
   // Get shared connection configuration
-  const config = getTemporalConnectionConfig();
+  let config;
+  try {
+    config = getTemporalConnectionConfig();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('❌ Failed to get connection configuration:', errorMessage);
+    console.error('This usually means required environment variables are missing.');
+    throw error;
+  }
   
   if (config.isDev) {
-    console.log(`Connecting to local Temporal instance at ${config.connectionOptions.address} (namespace: ${config.namespace})...`);
+    console.log(`🔧 Dev mode: Connecting to local Temporal instance at ${config.connectionOptions.address} (namespace: ${config.namespace})...`);
   } else {
-    console.log('Connecting to Temporal Cloud...');
+    console.log('☁️  Production mode: Connecting to Temporal Cloud...');
+    console.log(`  Address: ${config.connectionOptions.address}`);
+    console.log(`  Namespace: ${config.namespace}`);
   }
 
   try {
@@ -90,11 +109,12 @@ async function run() {
     });
 
     if (config.isDev) {
-      console.log(`Connected to local Temporal instance (namespace: ${config.namespace})`);
+      console.log(`✅ Connected to local Temporal instance (namespace: ${config.namespace})`);
     } else {
-      console.log('Connected to Temporal Cloud');
+      console.log('✅ Connected to Temporal Cloud');
     }
-    console.log('Worker started, listening for tasks...');
+    console.log(`🚀 Worker started, listening for tasks on queue: ${taskQueue}`);
+    console.log(`📋 Polling for workflows in namespace: ${config.namespace}`);
 
     await worker.run();
   } catch (error) {
@@ -119,7 +139,23 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error('Worker failed to start:', err);
+  console.error('❌ Worker failed to start:', err);
+  const errorMessage = err instanceof Error ? err.message : String(err);
+  const errorStack = err instanceof Error ? err.stack : undefined;
+  
+  console.error('\n=== DIAGNOSTIC INFORMATION ===');
+  console.error('Error:', errorMessage);
+  if (errorStack) {
+    console.error('Stack:', errorStack);
+  }
+  console.error('\nPlease check:');
+  console.error('1. Environment variables are set correctly');
+  console.error('2. TEMPORAL_ADDRESS points to your Temporal Cloud instance');
+  console.error('3. TEMPORAL_API_KEY is valid and not expired');
+  console.error('4. TEMPORAL_NAMESPACE matches your Temporal Cloud namespace');
+  console.error('5. Network connectivity to Temporal Cloud');
+  console.error('==============================\n');
+  
   process.exit(1);
 });
 

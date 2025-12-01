@@ -1,0 +1,1 @@
+ALTER TABLE "calendars" ADD COLUMN "provider_calendar_id" text NOT NULL;

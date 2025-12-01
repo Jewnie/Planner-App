@@ -1,7 +1,7 @@
 import { google, calendar_v3, Auth } from 'googleapis';
 import { db } from '../../db.js';
 import { calendarProviders, calendars, events, eventAttendees, calendarWatches } from '../../db/calendar-schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getValidGoogleOAuthClientForActivity } from '../../lib/google-auth.js';
 import { integrationStatuses, integrationTypes } from '../../db/integration-schema.js';
 import { upsertIntegration } from '../../routers/integrations/integration-repo.js';
@@ -31,6 +31,9 @@ export interface GoogleCalendarEventNormalized {
   
   // Optional original timezone (for display)
   timeZone?: string;
+  
+  // Status of the event (e.g., "confirmed", "cancelled" for deleted events)
+  status?: string;
   
   // Raw Google event as fetched (for debugging or re-sync)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,6 +169,7 @@ function normalizeGoogleEvent(item: calendar_v3.Schema$Event): GoogleCalendarEve
     attendees: attendees && attendees.length > 0 ? attendees : undefined,
     recurrence: item.recurrence || undefined, // Google provides recurrence as string array (RRULE, EXDATE, etc.)
     timeZone: timeZone || undefined,
+    status: item.status || undefined, // "confirmed", "tentative", "cancelled" (deleted)
     raw: item,
   };
 }
@@ -257,23 +261,19 @@ export async function upsertCalendar(params:{
   name: string,
   color?: string,  
   metadata?: Record<string, unknown>,
-  channelId: string,
-  resourceId: string,
-  expiration: Date,
+ 
 }): Promise<string> {
-  // Check if calendar already exists (by provider and Google calendar ID in metadata)
+  // Check if calendar already exists (by provider and provider calendar ID)
   const existing = await db
     .select()
     .from(calendars)
-    .where(eq(calendars.providerId, params.providerId))
-    .then(rows => {
-      // Try to find by matching Google calendar ID in metadata
-      return rows.find(cal => {
-        const meta = cal.metadata as Record<string, unknown> | null;
-        return meta?.googleCalendarId === params.googleCalendarId;
-      });
-    });
-
+    .where(
+      and(
+        eq(calendars.providerId, params.providerId),
+        eq(calendars.providerCalendarId, params.googleCalendarId)
+      )
+    )
+    .then(rows => rows[0]);
 
   if (existing) {
     // Update existing calendar
@@ -282,6 +282,7 @@ export async function upsertCalendar(params:{
       .set({
         name: params.name,
         color: params.color,
+        providerCalendarId: params.googleCalendarId, // Ensure it's up to date
         metadata: params.metadata || existing.metadata,
      
       })
@@ -298,7 +299,8 @@ export async function upsertCalendar(params:{
       providerId: params.providerId,
       name: params.name,
       color: params.color,
-      metadata: params.metadata || { googleCalendarId: params.googleCalendarId },
+      providerCalendarId: params.googleCalendarId,
+      metadata: params.metadata || {},
      
     })
     .returning();
@@ -318,12 +320,34 @@ export async function getCalendarSyncToken(params: {
   return calendar?.syncToken || null;
 }
 
+/**
+ * Get provider calendar ID from database calendar ID
+ */
+export async function getGoogleCalendarId(params: {
+  calendarId: string;
+}): Promise<string> {
+  const calendar = await db
+    .select({ providerCalendarId: calendars.providerCalendarId })
+    .from(calendars)
+    .where(eq(calendars.id, params.calendarId))
+    .then(rows => rows[0]);
+  
+  if (!calendar) {
+    throw new Error(`Calendar not found: ${params.calendarId}`);
+  }
+  
+  if (!calendar.providerCalendarId) {
+    throw new Error(`Provider calendar ID not found for calendar: ${params.calendarId}`);
+  }
+  
+  return calendar.providerCalendarId;
+}
+
 export async function updateCalendarSyncToken(params:{
   calendarId: string,
-  providerId: string,
   syncToken: string,
 }): Promise<void> {
-  await db.update(calendars).set({ syncToken: params.syncToken }).where(and(eq(calendars.id, params.calendarId), eq(calendars.providerId, params.providerId)));
+  await db.update(calendars).set({ syncToken: params.syncToken }).where(and(eq(calendars.id, params.calendarId)));
 }
 
 /**
@@ -433,14 +457,55 @@ export async function upsertEvents(
   return { created, updated };
 }
 
-export async function createCalendarWatch(params:{
+/**
+ * Delete events from database by provider event IDs
+ */
+export async function deleteEvents(
   calendarId: string,
+  providerEventIds: string[]
+): Promise<number> {
+  if (providerEventIds.length === 0) {
+    return 0;
+  }
+
+  // First, get the event IDs that match these provider event IDs
+  const eventsToDelete = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(
+      and(
+        eq(events.calendarId, calendarId),
+        inArray(events.providerEventId, providerEventIds)
+      )
+    );
+
+  if (eventsToDelete.length === 0) {
+    return 0;
+  }
+
+  const eventIds = eventsToDelete.map(e => e.id);
+
+  // Delete attendees first (foreign key constraint)
+  await db
+    .delete(eventAttendees)
+    .where(inArray(eventAttendees.eventId, eventIds));
+
+  // Delete events
+  await db
+    .delete(events)
+    .where(inArray(events.id, eventIds));
+
+  return eventsToDelete.length;
+}
+
+export async function createCalendarWatch(params:{
+  googleCalendarId: string, // Google Calendar ID for API call (e.g., "jonathan.loore@gmail.com")
+  databaseCalendarId: string, // Database calendar ID (UUID) for storage
   accountId: string,
   providerId: string,
 }) {
   const oauth2 = await getGoogleOAuthClient(params.accountId);
   const calendar = google.calendar({ version: "v3", auth: oauth2 });
-
 
   const channelSchema = z.string();
   
@@ -451,53 +516,95 @@ export async function createCalendarWatch(params:{
     throw new Error('WEBHOOK_URL or API_URL environment variable must be set for Google Calendar webhooks');
   }
 
-  const existingWatchData = await getExistingCalendarWatchDataForCalendar({ calendarId: params.calendarId, providerId: params.providerId });
-
+  const existingWatchData = await getExistingCalendarWatchDataForCalendar({ calendarId: params.databaseCalendarId, providerId: params.providerId });
 
   const channelId = channelSchema.parse(crypto.randomUUID()); 
-  const res = await calendar.events.watch({
-    calendarId: params.calendarId,
-    requestBody: {
-      id: channelId,
-      type: "web_hook",
-      address: `${googleWebhookUrl}/google-calendar-webhook`, // your public HTTPS webhook
-    },
-  });
-
-  console.log(res.data.expiration, '---------------------EXPIRATION--------------------');
-
-  if(res.status === 200){
-    try {
-    await db.insert(calendarWatches).values({
-      calendarId: params.calendarId,
-      providerId: params.providerId,
-      channelId: channelId,
-      resourceId: res.data.resourceId as string,
-      expiration: new Date(Number(res.data.expiration)),
+  
+  try {
+    const res = await calendar.events.watch({
+      calendarId: params.googleCalendarId, // Use Google Calendar ID for API call
+      requestBody: {
+        id: channelId,
+        type: "web_hook",
+        address: `${googleWebhookUrl}/google-calendar-webhook`, // your public HTTPS webhook
+      },
     });
-    if(existingWatchData.length > 0){
-      const stoppedWatch = await calendar.channels.stop({
-        requestBody: {
-          id: existingWatchData[0].channelId,
-          resourceId: existingWatchData[0].resourceId,
-        },
-      });
-      if(stoppedWatch.status === 200){
-        await db.update(calendarWatches).set({ deletedAt: new Date() }).where(and(
-          eq(calendarWatches.id, existingWatchData[0].id)
-            ));
-      }
+
+    // Check if the response indicates success
+    if (res.status !== 200) {
+      throw new Error(`Google Calendar API returned status ${res.status} when creating watch for calendar ${params.googleCalendarId}`);
     }
-    console.log(`[Activity] New Calendar watch created successfully`);
+
+    // Validate that we got the required data
+    if (!res.data.id || !res.data.resourceId || !res.data.expiration) {
+      throw new Error(`Google Calendar API returned incomplete watch data for calendar ${params.googleCalendarId}`);
+    }
+
+    console.log(res.data.expiration, '---------------------EXPIRATION--------------------');
+
+    try {
+      await db.insert(calendarWatches).values({
+        calendarId: params.databaseCalendarId, // Use database calendar ID (UUID) for storage
+        providerId: params.providerId,
+        channelId: channelId,
+        resourceId: res.data.resourceId as string,
+        expiration: new Date(Number(res.data.expiration)),
+      });
+      
+      if(existingWatchData.length > 0){
+        const stoppedWatch = await calendar.channels.stop({
+          requestBody: {
+            id: existingWatchData[0].channelId,
+            resourceId: existingWatchData[0].resourceId,
+          },
+        });
+        if(stoppedWatch.status === 200){
+          await db.update(calendarWatches).set({ deletedAt: new Date() }).where(and(
+            eq(calendarWatches.id, existingWatchData[0].id)
+          ));
+        }
+      }
+      console.log(`[Activity] New Calendar watch created successfully`);
     } catch (error) {
-      console.error(`[Activity] Error in stopCalendarWatch:`, error);
+      console.error(`[Activity] Error saving calendar watch to database:`, error);
       throw error;
     }
+
+    console.log("Watch created:", res.data);
+
+    // Return watch data
+    return {
+      channelId: res.data.id,
+      resourceId: res.data.resourceId,
+      expiration: res.data.expiration,
+    };
+  } catch (error) {
+    // Check if this is a Google API error indicating watches aren't supported
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    // Google API errors may have a code property
+    const errorCode = error && typeof error === 'object' && 'code' in error 
+      ? (error as { code?: number }).code 
+      : undefined;
+    
+    // Google API error codes that indicate watches aren't supported:
+    // - 403: Forbidden (often means watch not supported)
+    // - 400: Bad Request (might indicate invalid calendar for watches)
+    if (errorCode === 403 || errorCode === 400) {
+      // Check error message for specific watch-related errors
+      const lowerMessage = errorMessage.toLowerCase();
+      if (
+        lowerMessage.includes('watch') && 
+        (lowerMessage.includes('not supported') || 
+         lowerMessage.includes('not allowed') || 
+         lowerMessage.includes('forbidden') ||
+         lowerMessage.includes('cannot'))
+      ) {
+        throw new Error(`Calendar ${params.googleCalendarId} does not support watch notifications: ${errorMessage}`);
+      }
+    }
+    
+    // Re-throw the original error if it's not a watch-not-supported error
+    throw error;
   }
-
-  console.log("Watch created:", res.data);
-
-  // Save channelId, resourceId, and expiration in DB for future renewals
-  return {channelId: res.data.id, resourceId: res.data.resourceId, expiration: res.data.expiration};
 }
 

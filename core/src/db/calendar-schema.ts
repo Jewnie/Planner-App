@@ -15,6 +15,7 @@ export const calendars = pgTable("calendars", {
   providerId: uuid("provider_id").notNull(), // UUID reference to provider
   name: text("name").notNull(),
   color: text("color"),
+  providerCalendarId: text("provider_calendar_id").notNull(), // Provider-specific calendar ID (e.g., Google: "jonathan.loore@gmail.com")
   metadata: json("metadata"),
   syncToken: text("sync_token"),
 });

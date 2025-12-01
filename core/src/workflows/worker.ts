@@ -1,11 +1,19 @@
 import { NativeConnection, Worker } from '@temporalio/worker';
-import * as activities from './sync/activities.js';
+import * as syncActivities from './sync/activities.js';
+import * as syncEventsActivities from './sync-events/activities.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import 'dotenv/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Combine all activities from all workflows
+// Note: calendar-watch/activities.ts is currently empty, so we skip it
+const activities = {
+  ...syncActivities,
+  ...syncEventsActivities,
+};
 
 /**
  * Create and run a Temporal worker
@@ -56,11 +64,11 @@ async function run() {
   try {
     const connection = await NativeConnection.connect(connectionOptions);
 
-    // For ES modules, we need to use the compiled workflow path
-    // In development, this will point to the source, but in production it should point to dist
+    // Point to the workflows index file which exports all workflows
+    // In development, use .ts files; in production, use compiled .js files
     const workflowsPath = process.env.NODE_ENV !== "dev"
-      ? join(__dirname, 'sync', 'workflow.js')
-      : join(__dirname, 'sync', 'workflow.ts');
+      ? join(__dirname, 'index.js')
+      : join(__dirname, 'index.ts');
 
     const worker = await Worker.create({
       connection,

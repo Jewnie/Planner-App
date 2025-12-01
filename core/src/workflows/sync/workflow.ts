@@ -89,9 +89,7 @@ export async function syncGoogleCalendarWorkflow(
           calendarId: calendar.id,
         });
 
-        const watchData = await createCalendarWatch({accountId: input.accountId, calendarId: calendar.id, providerId: provider.id});
-
-        // Upsert calendar in database
+        // Upsert calendar in database first to get the database calendar ID (UUID)
         const calendarId = await upsertCalendar({
           providerId: provider.id,
           googleCalendarId: calendar.id,
@@ -102,11 +100,32 @@ export async function syncGoogleCalendarWorkflow(
             backgroundColor: calendar.backgroundColor,
             foregroundColor: calendar.foregroundColor,
           },
-          channelId:watchData?.channelId ?? '',
-          resourceId: watchData?.resourceId ?? '',
-            expiration: watchData?.expiration ? new Date(Number(watchData.expiration)) : new Date(),
+        });
+
+        // Try to create calendar watch, but don't fail if it's not supported
+        // Some calendars (like read-only system calendars) don't support watches
+        // Pass both Google Calendar ID (for API) and database calendar ID (for storage)
+        try {
+          await createCalendarWatch({
+            accountId: input.accountId, 
+            googleCalendarId: calendar.id, // For Google API call
+            databaseCalendarId: calendarId, // For storing in calendarWatches table
+            providerId: provider.id
+          });
+          log.info(`Calendar watch created for ${calendar.summary}`);
+        } catch (watchError) {
+          const watchErrorMessage = watchError instanceof Error ? watchError.message : String(watchError);
+          
+          // Check if this is specifically a "watch not supported" error
+          const isWatchNotSupported = watchErrorMessage.toLowerCase().includes('does not support watch');
+          
+          if (isWatchNotSupported) {
+            log.info(`Calendar ${calendar.summary} (${calendar.id}) does not support watch notifications. Syncing without watch.`);
+          } else {
+            log.warn(`Could not create watch for calendar ${calendar.summary} (${calendar.id}): ${watchErrorMessage}. Continuing without watch.`);
           }
-        );
+          // Continue without watch - calendar will still be synced
+        }
 
         if(accountSyncToken){
           await updateCalendarProviderSyncToken({accountId: input.accountId,providerName: 'google', syncToken: accountSyncToken});
@@ -147,8 +166,7 @@ export async function syncGoogleCalendarWorkflow(
         } while (calendarPageToken !== null);
 
         if(calendarSyncToken){
-          console.log("-------------------NŃEWSYNCTOKEN----------------------------------", calendarSyncToken);
-        await updateCalendarSyncToken({calendarId: calendarId,providerId: provider.id, syncToken: calendarSyncToken});
+        await updateCalendarSyncToken({calendarId: calendarId, syncToken: calendarSyncToken});
         }
 
 

@@ -9,6 +9,8 @@ import { auth } from "./auth.js"
 import { createContext } from "./trpc.js"
 import { appRouter } from "./routers/index.js"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
+import { processCalendarWatchNotification } from "./lib/process-calendar-watch-notification.js"
+
 
 const app = express()
 const port = Number(process.env.PORT) || 3000
@@ -74,17 +76,38 @@ app.get("/api/session", async (req, res) => {
 })
 
 
-app.post("/google-calendar-webhook", (req, res) => {
+app.post("/google-calendar-webhook", async (req, res) => {
   const headers = req.headers;
 
   console.log("Google webhook headers:", headers);
   console.log("Webhook body:", req.body);
   
-
   // Google requires a 200 response immediately
   res.status(200).send();
 
-  // TODO: enqueue a job to process the change asynchronously
+  const channelId = headers['x-goog-channel-id'] as string;
+  const resourceId = headers['x-goog-resource-id'] as string;
+  const resourceState = headers['x-goog-resource-state'] as string;
+  const messageNumber = headers['x-goog-message-number'] as string;
+
+  // Validate that this is an actual Google webhook with required headers
+  if (!channelId || !resourceId || !resourceState) {
+    console.warn("Invalid Google webhook: missing required headers", { channelId, resourceId, resourceState });
+    return;
+  }
+
+  // Only process actual push notifications (resourceState === 'exists')
+  // Skip 'sync' (initial channel creation) and 'not_exists' (resource deleted) notifications
+  if (resourceState !== 'exists') {
+    console.log(`Skipping webhook notification with resourceState: ${resourceState} (only processing 'exists' notifications)`);
+    return;
+  }
+
+  // Process asynchronously - don't await to avoid blocking the response
+  processCalendarWatchNotification({ channelId, resourceId, resourceState, messageNumber })
+    .catch((error) => {
+      console.error("Failed to process calendar watch notification:", error);
+    });
 });
 
 if (process.env.NODE_ENV === "dev") {

@@ -11,6 +11,11 @@
     "server:dev": "nodemon --watch src --ext ts --exec \"tsx src/server.ts\"",
     "worker": "tsx src/workflows/worker.ts",
     "worker:dev": "nodemon --watch src/workflows --ext ts --exec \"tsx src/workflows/worker.ts\"",
+    "check-imports": "node scripts/check-imports.js",
+    "prebuild": "npm run check-imports",
+    "db:push": "NODE_OPTIONS='--import tsx' drizzle-kit push",
+    "db:generate": "NODE_OPTIONS='--import tsx' drizzle-kit generate",
+    "db:studio": "NODE_OPTIONS='--import tsx' drizzle-kit studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

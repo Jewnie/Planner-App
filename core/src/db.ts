@@ -56,5 +56,10 @@ const pool = new Pool({
   connectionString,
   ssl: getSSLConfig(),
 })
+// Handle unexpected errors on idle client
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  // Don't crash the app, just log it
+});
 
 export const db = drizzle(pool, { schema })

@@ -13,10 +13,21 @@ const reactHooksRecommended = reactHooksPlugin.configs.recommended ?? { rules: {
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/build/**', '**/node_modules/**'],
+    ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/scripts/**', 'eslint.config.mjs'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Default parser config for all TypeScript files (without type checking)
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+        // Don't require project for files not explicitly configured
+        project: false,
+      },
+    },
+  },
   {
     files: ['core/**/*.ts'],
     languageOptions: {

@@ -4,6 +4,7 @@ import * as syncEventsActivities from './sync-events/activities.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import 'dotenv/config';
+import { getTemporalConnectionConfig } from './temporal-connection-options.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,74 +32,29 @@ const activities = {
  * - TEMPORAL_NAMESPACE: Your Temporal Cloud namespace
  */
 async function run() {
-  const isDev = process.env.NODE_ENV === 'dev';
   const taskQueue = process.env.TEMPORAL_TASK_QUEUE || 'calendar-sync-queue';
   
-  let connectionOptions: Parameters<typeof NativeConnection.connect>[0];
-  let temporalNamespace: string;
-
-  if (isDev) {
-    // Local Docker Temporal instance - always use localhost:7234 and 'default' namespace in dev
-    const temporalAddress = 'localhost:7234';
-    temporalNamespace = 'default'; // Always use 'default' namespace in dev, ignore TEMPORAL_NAMESPACE
-    
-    console.log(`Connecting to local Temporal instance at ${temporalAddress} (namespace: ${temporalNamespace})...`);
-    
-    connectionOptions = {
-      address: temporalAddress,
-      // No TLS for local development
-      // No API key needed for local development
-    };
+  // Get shared connection configuration
+  const config = getTemporalConnectionConfig();
+  
+  if (config.isDev) {
+    console.log(`Connecting to local Temporal instance at ${config.connectionOptions.address} (namespace: ${config.namespace})...`);
   } else {
-    // Temporal Cloud connection
-    const temporalAddress = process.env.TEMPORAL_ADDRESS;
-    const apiKey = process.env.TEMPORAL_API_KEY;
-    temporalNamespace = process.env.TEMPORAL_NAMESPACE || '';
-
-    // Validate required environment variables
-    if (!temporalAddress) {
-      console.error('TEMPORAL_ADDRESS environment variable is required.');
-      process.exit(1);
-    }
-
-    if (!apiKey) {
-      console.error('TEMPORAL_API_KEY environment variable is required for Temporal Cloud.');
-      process.exit(1);
-    }
-
-    if (!temporalNamespace) {
-      console.error('TEMPORAL_NAMESPACE environment variable is required.');
-      process.exit(1);
-    }
-
     console.log('Connecting to Temporal Cloud...');
-
-    // Use official Temporal Cloud authentication pattern
-    // API key goes as direct property, namespace in metadata
-    const trimmedApiKey = apiKey.trim();
-    
-    connectionOptions = {
-      address: temporalAddress,
-      tls: true, // Temporal Cloud requires TLS (use true, not {})
-      apiKey: trimmedApiKey, // API key as direct property (not in metadata)
-      metadata: {
-        'temporal-namespace': temporalNamespace, // Namespace in metadata
-      },
-    };
   }
 
   try {
-    const connection = await NativeConnection.connect(connectionOptions);
+    const connection = await NativeConnection.connect(config.connectionOptions as Parameters<typeof NativeConnection.connect>[0]);
 
     // Point to the workflows index file which exports all workflows
     // In development, use .ts files; in production, use compiled .js files
-    const workflowsPath = process.env.NODE_ENV !== "dev"
+    const workflowsPath = !config.isDev
       ? join(__dirname, 'index.js')
       : join(__dirname, 'index.ts');
 
     const worker = await Worker.create({
       connection,
-      namespace: temporalNamespace,
+      namespace: config.namespace,
       workflowsPath,
       activities,
       taskQueue,
@@ -133,13 +89,18 @@ async function run() {
       // },
     });
 
+    if (config.isDev) {
+      console.log(`Connected to local Temporal instance (namespace: ${config.namespace})`);
+    } else {
+      console.log('Connected to Temporal Cloud');
+    }
     console.log('Worker started, listening for tasks...');
 
     await worker.run();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
-    if (isDev) {
+    if (config.isDev) {
       console.error('Failed to connect to local Temporal instance:', errorMessage);
       console.error('Make sure Docker containers are running: docker-compose up -d');
     } else {

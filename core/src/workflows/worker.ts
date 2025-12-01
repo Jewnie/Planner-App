@@ -63,7 +63,9 @@ async function run() {
   }
 
   try {
+    console.log('🔌 Establishing connection to Temporal...');
     const connection = await NativeConnection.connect(config.connectionOptions as Parameters<typeof NativeConnection.connect>[0]);
+    console.log('✅ Connection established');
 
     // Point to the workflows index file which exports all workflows
     // In development, use .ts files; in production, use compiled .js files
@@ -71,6 +73,29 @@ async function run() {
       ? join(__dirname, 'index.js')
       : join(__dirname, 'index.ts');
 
+    console.log(`📁 Looking for workflows at: ${workflowsPath}`);
+    console.log(`📁 Current __dirname: ${__dirname}`);
+    
+    // Check if workflows file exists (in production, it should be compiled)
+    try {
+      const fs = await import('fs');
+      const exists = fs.existsSync(workflowsPath);
+      if (!exists) {
+        console.error(`❌ Workflows file not found at: ${workflowsPath}`);
+        console.error('This usually means the code was not compiled. In production, make sure to run: npm run build');
+        throw new Error(`Workflows file not found: ${workflowsPath}`);
+      }
+      console.log(`✅ Workflows file found`);
+    } catch {
+      // If we can't check, continue anyway - might work
+      console.warn('⚠️  Could not verify workflows file exists, continuing...');
+    }
+
+    console.log('🏗️  Creating worker...');
+    console.log(`  - Namespace: ${config.namespace}`);
+    console.log(`  - Task Queue: ${taskQueue}`);
+    console.log(`  - Activities: ${Object.keys(activities).length} activities`);
+    
     const worker = await Worker.create({
       connection,
       namespace: config.namespace,

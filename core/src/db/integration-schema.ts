@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, unique } from "drizzle-orm/pg-core";
-import { account } from "./auth-schema";
+import { account } from "./auth-schema.js";
 
 export const integrationTypes = ["google", "outlook"] as const;
 export const integrationStatuses = ["pending", "syncing", "synced", "error"] as const;

@@ -1,4 +1,4 @@
-import { batchDownloadCalendarEvents, getCalendarSyncToken, updateCalendarSyncToken, upsertEvents, getGoogleCalendarId, deleteEvents } from "../sync/activities";
+import { batchDownloadCalendarEvents, getCalendarSyncToken, updateCalendarSyncToken, upsertEvents, getGoogleCalendarId, deleteEvents } from "../sync/activities.js";
 
 export const syncEventsIncremental =  async (params:{calendarId: string, accountId:string}) =>{
     const { calendarId, accountId } = params;

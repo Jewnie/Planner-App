@@ -15,6 +15,7 @@
     "prebuild": "npm run check-imports",
     "db:push": "NODE_OPTIONS='--import tsx' drizzle-kit push",
     "db:generate": "NODE_OPTIONS='--import tsx' drizzle-kit generate",
+    "db:migrate": "tsx scripts/run-migrations.ts",
     "db:studio": "NODE_OPTIONS='--import tsx' drizzle-kit studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

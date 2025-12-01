@@ -38,7 +38,12 @@ export const processCalendarWatchNotification = async(headers: {
       // We can use it directly without looking it up
       const temporalClient = await getTemporalClient();
     
-      const workflowId = `events-notification-sync-${watch.channelId}-${Date.now()}`;
+      // Determine calendar type from provider name
+      // Assuming provider name is 'google' or 'outlook'
+      const calendarType = provider.name.toLowerCase() as 'google' | 'outlook';
+      
+      // Workflow ID format: calendar-sync-incremental-{accountId}-{calendarType}
+      const workflowId = `calendar-sync-incremental-${provider.accountId}-${calendarType}`;
     
       await temporalClient.workflow.start("syncEventsIncrementalWorkflow", {
         taskQueue: "calendar-sync-queue",

@@ -2,6 +2,8 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import outlookLogo from '@/assets/outlook-logo.png';
 import { Badge } from '@/components/ui/badge';
+import { useSyncStatus } from '@/hooks/use-sync-status';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function IntegrationsPage() {
   const syncMutation = trpc.calendar.syncCalendar.useMutation();
@@ -12,6 +14,10 @@ export default function IntegrationsPage() {
   const calendarProvidersQuery = trpc.calendar.getCalendarProviders.useQuery();
   const hasGoogleCalendarLink = calendarProvidersQuery.data?.some((p) => p.name === 'google');
   const hasOutlookCalendarLink = calendarProvidersQuery.data?.some((p) => p.name === 'outlook');
+
+  // Check if syncs are running
+  const googleSyncStatus = useSyncStatus('google');
+  // const outlookSyncStatus = useSyncStatus('outlook'); // TODO
 
   const handleSync = (type: 'google' | 'outlook') => {
     syncMutation.mutate({ calendarType: type });
@@ -52,11 +58,19 @@ export default function IntegrationsPage() {
                   </svg>
                 </div>
                 <h3 className="text-sm font-medium text-card-foreground">Google Calendar</h3>
-                {hasGoogleCalendarLink ? (
-                  <Badge variant="outline" className="border-green-400">
-                    {integrationsQuery.data?.find((i) => i.type === 'google')?.status}
-                  </Badge>
-                ) : null}
+                <div className="flex items-center gap-2">
+                  {googleSyncStatus.isRunning && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Spinner className="w-3 h-3" />
+                      <span>Syncing...</span>
+                    </div>
+                  )}
+                  {hasGoogleCalendarLink && !googleSyncStatus.isRunning && (
+                    <Badge variant="outline" className="border-green-400">
+                      {integrationsQuery.data?.find((i) => i.type === 'google')?.status}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 Sync your Google Calendar events to your planner
@@ -66,8 +80,22 @@ export default function IntegrationsPage() {
               )}
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => handleSync('google')} variant="outline" className="flex-1">
-                {hasGoogleCalendarLink ? 'Re-sync' : 'Link Google Calendar'}
+              <Button
+                onClick={() => handleSync('google')}
+                variant="outline"
+                className="flex-1"
+                disabled={googleSyncStatus.isRunning || syncMutation.isPending}
+              >
+                {googleSyncStatus.isRunning || syncMutation.isPending ? (
+                  <>
+                    <Spinner className="w-4 h-4 mr-2" />
+                    Syncing...
+                  </>
+                ) : hasGoogleCalendarLink ? (
+                  'Re-sync'
+                ) : (
+                  'Link Google Calendar'
+                )}
               </Button>
             </div>
           </div>

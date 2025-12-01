@@ -8,6 +8,7 @@ import { eq, and, or, gte, lte, inArray, isNull, isNotNull, gt, desc } from "dri
 import type { InferSelectModel } from "drizzle-orm";
 
 import RRulePkg from "rrule";
+import { getTemporalClient } from "../../workflows/temporal-client.js";
 
 /**
  * Convert a regular Date to UTCDate for UTC-aware calculations
@@ -231,6 +232,60 @@ export const getExistingCalendarWatchDataForCalendar = async (params: { calendar
       gt(calendarWatches.expiration, new Date())
     )
     ).orderBy(desc(calendarWatches.createdAt))
+}
+
+
+export async function checkIfSyncIsRunning(params: {
+  accountId: string;
+  calendarType: 'google' | 'outlook';
+}): Promise<{
+  isRunning: boolean;
+  workflowId: string | null;
+  status: string | null;
+}> {
+  try {
+    const client = await getTemporalClient();
+    
+    // Check both full sync and incremental sync workflows
+    const workflowIds = [
+      `calendar-sync-${params.accountId}-${params.calendarType}`, // Full sync
+      `calendar-sync-incremental-${params.accountId}-${params.calendarType}`, // Incremental sync
+    ];
+    
+    for (const workflowId of workflowIds) {
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        const description = await handle.describe();
+        
+        const status = description.status.name;
+        // Check if workflow is running
+        if (status === 'RUNNING' || status === 'CONTINUED_AS_NEW') {
+          return {
+            isRunning: true,
+            workflowId,
+            status,
+          };
+        }
+      } catch {
+        // Workflow doesn't exist or can't be accessed, continue checking
+        continue;
+      }
+    }
+    
+    return {
+      isRunning: false,
+      workflowId: null,
+      status: null,
+    };
+  } catch (error) {
+    console.error('Error checking if sync is running:', error);
+    // Return false on error to avoid blocking UI
+    return {
+      isRunning: false,
+      workflowId: null,
+      status: null,
+    };
+  }
 }
 
 

@@ -3,7 +3,7 @@ import { router, protectedProcedure } from "../../trpc.js";
 import { getGoogleAccountForUser } from "../user/user-repo.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders } from "./calendar-repo.js";
+import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning } from "./calendar-repo.js";
 import { formatDateToYYYYMMDD } from "../../lib/date-utils.js";
 export const calendarRouter = router({
  
@@ -64,7 +64,8 @@ export const calendarRouter = router({
       try {
         const client = await getTemporalClient();
         
-        const workflowId = `calendar-sync-${ctx.accountId}-${Date.now()}-${input?.calendarType}`;
+        // Workflow ID format: calendar-sync-{accountId}-{calendarType}
+        const workflowId = `calendar-sync-${ctx.accountId}-${input?.calendarType}`;
         
         // TODO handle type of calendar sync GOOGLE/OUTLOOK
         const handle = await client.workflow.start('syncGoogleCalendarWorkflow', {
@@ -141,6 +142,18 @@ export const calendarRouter = router({
           message: `Failed to get sync status: ${error instanceof Error ? error.message : String(error)}`,
         });
       }
+    }),
+
+  /**
+   * Check if a sync workflow is currently running for a given integration type
+   */
+  isSyncRunning: protectedProcedure
+    .input(z.object({ calendarType: z.enum(["google", "outlook"]) }))
+    .query(async ({ ctx, input }) => {
+      return await checkIfSyncIsRunning({
+        accountId: ctx.accountId,
+        calendarType: input.calendarType,
+      });
     }),
 
 

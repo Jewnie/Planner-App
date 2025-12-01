@@ -1,5 +1,5 @@
-import { db } from "../db";
-import { getTemporalClient } from "../workflows/temporal-client";
+import { db } from "../db.js";
+import { getTemporalClient } from "../workflows/temporal-client.js";
 
 export const processCalendarWatchNotification = async(headers: {
     channelId: string;

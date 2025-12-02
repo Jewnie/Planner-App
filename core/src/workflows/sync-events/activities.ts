@@ -27,7 +27,7 @@ do{
     const activeEvents = events.events.filter(event => event.status !== 'cancelled');
     const deletedEventIds = events.events
       .filter(event => event.status === 'cancelled')
-      .map(event => event.id);
+      .map(event => event.id).filter(Boolean) as string[];
 
     // Upsert active events
     if(activeEvents.length > 0){

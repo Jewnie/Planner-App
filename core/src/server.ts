@@ -1,7 +1,5 @@
 import express from "express"
 import cors from "cors"
-import { fileURLToPath } from "url"
-import { dirname, join } from "path"
 
 import "dotenv/config"
 
@@ -13,8 +11,6 @@ import { appRouter } from "./routers/index.js"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
 import { processCalendarWatchNotification } from "./lib/process-calendar-watch-notification.js"
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 const app = express()
 const port = Number(process.env.PORT) || 3000
@@ -58,9 +54,8 @@ app.use("/trpc", createExpressMiddleware({
   createContext,
 }))
 
-// Health check endpoint (before static file serving)
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() })
+app.get("/", (_req, res) => {
+  res.json({ status: "ok" })
 })
 
 app.get("/api/session", async (req, res) => {
@@ -115,36 +110,18 @@ app.post("/google-calendar-webhook", async (req, res) => {
     });
 });
 
-// Serve static files from dashboard in production (Railway deployment)
-// This must be AFTER all API routes
-if (process.env.NODE_ENV !== "dev") {
-  const dashboardPath = join(__dirname, '../../dashboard/dist');
-  
-  // Serve static files from dashboard dist
-  app.use(express.static(dashboardPath));
-  
-  // Fallback to index.html for client-side routing
-  // Only catch routes that aren't API routes
-  app.get('*', (req, res) => {
-    res.sendFile(join(dashboardPath, 'index.html'));
-  });
-}
-
-// Start server
-const serverPort = process.env.PORT || port;
-app.listen(serverPort, () => {
-  console.log(`🚀 Server running on port ${serverPort}`);
-  if (process.env.NODE_ENV === "dev") {
-    console.log(`   Local: http://localhost:${serverPort}`);
+if (process.env.NODE_ENV === "dev") {
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`)
     if (!process.env.WEBHOOK_URL && !process.env.API_URL) {
       console.warn("⚠️  WEBHOOK_URL or API_URL not set. Google Calendar webhooks will not work.");
     }
-  } else {
-    console.log(`   Environment: ${process.env.NODE_ENV || 'production'}`);
-    if (!process.env.API_URL) {
-      console.warn("⚠️  Warning: API_URL environment variable is not set. Google Calendar webhooks may not work.");
-    }
+  })
+} else {
+  // In production, ensure API_URL is set
+  if (!process.env.API_URL) {
+    console.warn("Warning: API_URL environment variable is not set. Google Calendar webhooks may not work.");
   }
-});
+}
 
 export default app

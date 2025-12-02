@@ -316,7 +316,7 @@ export default function MonthCalendar({
 
                             // Format start time for single-day events
                             const startTime = event.startTime;
-                            const topPosition = index * 20;
+                            const topPosition = `${index * 20}px`;
 
                             // Single-day events: bullet + title + time
                             if (isSingleDay && !event.allDay) {

@@ -16,9 +16,14 @@ Simple guide to deploy the Temporal worker to Railway.
 1. Click on the service that was created
 2. Go to **Settings** tab
 3. Configure:
-   - **Root Directory**: `core`
-   - **Build Command**: `npm install --legacy-peer-deps && npm run build`
-   - **Start Command**: `npm run worker:prod`
+   - **Root Directory**: Leave empty (use repo root) OR set to `.` (repo root)
+   - **Build Command**: `cd core && npm install && npm run build`
+   - **Start Command**: `cd core && npm run worker:prod`
+
+**Important for Workspaces**: Since this is an npm workspace, Railway needs to:
+
+- Run from repo root (to access root `package-lock.json`)
+- Then `cd core` to build and run the worker
 
 **Important**:
 

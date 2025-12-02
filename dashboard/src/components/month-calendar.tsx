@@ -132,7 +132,25 @@ export default function MonthCalendar({
         end.setHours(23, 59, 59, 999);
       }
 
-      return day >= startOfDay(start) && day <= startOfDay(end);
+      // Compare dates in local timezone by comparing year, month, day
+      const dayYear = day.getFullYear();
+      const dayMonth = day.getMonth();
+      const dayDate = day.getDate();
+
+      const startYear = start.getFullYear();
+      const startMonth = start.getMonth();
+      const startDate = start.getDate();
+
+      const endYear = end.getFullYear();
+      const endMonth = end.getMonth();
+      const endDate = end.getDate();
+
+      // Check if day falls within the event's date range
+      const dayTime = new Date(dayYear, dayMonth, dayDate).getTime();
+      const startDayTime = new Date(startYear, startMonth, startDate).getTime();
+      const endDayTime = new Date(endYear, endMonth, endDate).getTime();
+
+      return dayTime >= startDayTime && dayTime <= endDayTime;
     });
   };
 
@@ -252,7 +270,7 @@ export default function MonthCalendar({
                       >
                         {/* show up to 3 events as small pills (Untitled-style) */}
                         {(() => {
-                          // Sort events: multi-day events first, then by day span (descending)
+                          // Sort events: multi-day events first, then all-day events, then timed events by start time
                           const sortedEvents = dayEvents.sort((a, b) => {
                             const aStart = new Date(a.startTime);
                             const aEnd = new Date(a.endTime);
@@ -270,8 +288,18 @@ export default function MonthCalendar({
                             if (a.allDay && aSpan === 1 && !(b.allDay && bSpan === 1)) return -1;
                             if (b.allDay && bSpan === 1 && !(a.allDay && aSpan === 1)) return 1;
 
-                            // 3. Regular timed single-day events last
-                            return 0; // keep original order if both are same category
+                            // 3. Regular timed single-day events: sort by start time
+                            if (!a.allDay && !b.allDay && aSpan === 1 && bSpan === 1) {
+                              return aStart.getTime() - bStart.getTime();
+                            }
+
+                            // 4. If both are multi-day, sort by start time
+                            if (aSpan > 1 && bSpan > 1) {
+                              return aStart.getTime() - bStart.getTime();
+                            }
+
+                            // 5. Keep original order if both are same category
+                            return 0;
                           });
 
                           return sortedEvents.slice(0, 4).map((event, index) => {
@@ -314,8 +342,6 @@ export default function MonthCalendar({
                             // Check if this is a single-day event
                             const isSingleDay = eventDaySpan === 1;
 
-                            // Format start time for single-day events
-                            const startTime = event.startTime;
                             // Calculate top positions: incorporate margin directly into top value
                             // mt-2 = 8px, mt-1 = 4px - add these to the top calculation
                             const topPositionSingle = `${index * 20 + 8}px`; // index * 20 + mt-2 (8px)
@@ -323,6 +349,7 @@ export default function MonthCalendar({
 
                             // Single-day events: bullet + title + time
                             if (isSingleDay && !event.allDay) {
+                              const startTimeDate = new Date(event.startTime);
                               return (
                                 <div
                                   key={event.id || `event-${index}-${day.getTime()}`}
@@ -339,11 +366,9 @@ export default function MonthCalendar({
                                   />
                                   <span className="truncate flex-1 min-w-0">
                                     <span className="font-medium">{event.title}</span>
-                                    {startTime && (
-                                      <span className="text-muted-foreground ml-1">
-                                        {format(startTime, 'HH:mm')}
-                                      </span>
-                                    )}
+                                    <span className="text-muted-foreground ml-1">
+                                      {format(startTimeDate, 'HH:mm')}
+                                    </span>
                                   </span>
                                 </div>
                               );

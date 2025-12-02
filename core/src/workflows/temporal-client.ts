@@ -30,8 +30,8 @@ export async function getTemporalConnection(): Promise<Connection> {
     } else {
       console.log('Connected to Temporal Cloud');
     }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
     if (config.isDev) {
       console.error('Failed to connect to local Temporal instance:', errorMessage);
     } else {

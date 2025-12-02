@@ -269,7 +269,10 @@ const renderEventContent = (args: EventContentArg) => {
       )}
     >
       {!isAllDay && <div className={cn(`rounded-full w-1 h-1`, bulletColor)}></div>}{' '}
-      <p className={cn(`text-xs`, isAllDay ? 'text-center' : '')}> {args.event.title}</p>
+      <p className={cn(`text-xs max-w-[90%] truncate`, isAllDay ? 'text-center' : '')}>
+        {' '}
+        {args.event.title}
+      </p>
     </span>
   );
 };

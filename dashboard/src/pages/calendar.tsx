@@ -1,7 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import MonthCalendar, { type CalendarView } from '@/components/month-calendar';
-import { startOfMonth, format, subMonths, addMonths, subDays, addDays } from 'date-fns';
+import { type CalendarView } from '@/components/month-calendar';
+import {
+  startOfMonth,
+  format,
+  subMonths,
+  addMonths,
+  subDays,
+  addDays,
+  isSameDay,
+  isSameMonth,
+} from 'date-fns';
 import { EventSidebar } from '@/components/ui/event-sidebar';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
@@ -9,6 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from 'lucide-react';
 import { getDeterministicColor } from '@/utils/colors';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 export default function CalendarPage() {
   const [searchParams] = useSearchParams();
@@ -20,28 +32,91 @@ export default function CalendarPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([]);
 
+  const calendarRef = useRef<FullCalendar | null>(null);
+
+  /** ---------------------------
+   *  DATE RANGE FOR 3-MONTH FETCH
+   * --------------------------- */
+  const dates = useMemo(() => {
+    const previousMonth = startOfMonth(subMonths(currentMonth, 1));
+    const currentMonthDate = startOfMonth(currentMonth);
+    const nextMonth = startOfMonth(addMonths(currentMonth, 1));
+
+    return [
+      format(previousMonth, 'yyyy-MM-dd'),
+      format(currentMonthDate, 'yyyy-MM-dd'),
+      format(nextMonth, 'yyyy-MM-dd'),
+    ];
+  }, [currentMonth]);
+
   const calendarsQuery = trpc.calendar.listCalendars.useQuery();
 
-  // Initialize selected calendars to all calendars when they load
+  const eventsQuery = trpc.calendar.listEvents.useQuery(
+    {
+      range: 'month',
+      dates,
+      filters: { calendarIds: selectedCalendarIds },
+    },
+    {
+      placeholderData: (prev) => prev,
+    },
+  );
+
+  /** ---------------------------
+   *  TRANSFORM EVENTS FOR FULLCALENDAR
+   * --------------------------- */
+  const calendarEvents = useMemo(() => {
+    if (!eventsQuery.data) return [];
+
+    return eventsQuery.data.map((event) => {
+      const baseEvent = {
+        id: event.id,
+        title: event.title,
+        backgroundColor: getDeterministicColor(event.calendarId, 'bg'),
+        borderColor: getDeterministicColor(event.calendarId, 'border'),
+        textColor: getDeterministicColor(event.calendarId, 'text'),
+      };
+
+      if (event.allDay) {
+        return {
+          ...baseEvent,
+          date: format(new Date(event.startTime), 'yyyy-MM-dd'),
+          allDay: true,
+        };
+      }
+
+      return {
+        ...baseEvent,
+        start: event.startTime,
+        end: event.endTime,
+      };
+    });
+  }, [eventsQuery.data]);
+
+  /** ---------------------------
+   * PRESELECT ALL CALENDARS
+   * --------------------------- */
   useEffect(() => {
     if (calendarsQuery.data && calendarsQuery.data.length > 0 && selectedCalendarIds.length === 0) {
       setSelectedCalendarIds(calendarsQuery.data.map((cal) => cal.id));
     }
   }, [calendarsQuery.data, selectedCalendarIds.length]);
 
-  const monthLabel = useMemo(() => {
-    if (view === 'day') {
-      return format(selectedDate, 'MMMM d yyyy');
-    }
-    return format(currentMonth, 'LLLL yyyy');
-  }, [view, currentMonth, selectedDate]);
+  /** ---------------------------
+   * SYNC CUSTOM TOOLBAR WITH FULLCALENDAR VIEW
+   * --------------------------- */
+  const syncCalendarView = (date: Date) => {
+    const api = calendarRef.current?.getApi();
+    if (api) api.gotoDate(date);
+  };
 
   const handlePrev = () => {
     if (view === 'day') {
       setSelectedDate((prev) => subDays(prev, 1));
     } else {
-      const newMonth = subMonths(currentMonth, 1);
-      setCurrentMonth(startOfMonth(newMonth));
+      const newMonth = startOfMonth(subMonths(currentMonth, 1));
+      setCurrentMonth(newMonth);
+      syncCalendarView(newMonth);
     }
   };
 
@@ -49,32 +124,51 @@ export default function CalendarPage() {
     if (view === 'day') {
       setSelectedDate((prev) => addDays(prev, 1));
     } else {
-      const newMonth = addMonths(currentMonth, 1);
-      setCurrentMonth(startOfMonth(newMonth));
+      const newMonth = startOfMonth(addMonths(currentMonth, 1));
+      setCurrentMonth(newMonth);
+      syncCalendarView(newMonth);
     }
   };
+
+  /** ---------------------------
+   * UPDATE EVENTS WHEN API DATA CHANGES
+   * --------------------------- */
+  useEffect(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) api.refetchEvents();
+  }, [calendarEvents]);
+
+  /** ---------------------------
+   * LABEL
+   * --------------------------- */
+  const monthLabel = useMemo(() => {
+    if (view === 'day') return format(selectedDate, 'MMMM d yyyy');
+    return format(currentMonth, 'LLLL yyyy');
+  }, [view, currentMonth, selectedDate]);
 
   return (
     <div className="flex w-full h-full relative overflow-hidden">
       <div className="flex flex-col w-full min-w-0 h-full">
+        {/* ---------- HEADER ---------- */}
         <div className="flex w-full h-24 min-w-0 items-center justify-between space-x-2 shrink-0 p-4 border-b">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handlePrev} aria-label="Previous month">
+            <Button variant="ghost" size="sm" onClick={handlePrev}>
               ‹
             </Button>
             <h2 className="text-lg w-36 text-center font-medium">{monthLabel}</h2>
-            <Button variant="ghost" size="sm" onClick={handleNext} aria-label="Next month">
+            <Button variant="ghost" size="sm" onClick={handleNext}>
               ›
             </Button>
           </div>
+
           <div className="flex items-center gap-4">
-            {calendarsQuery.data && calendarsQuery.data.length > 0 && (
+            {calendarsQuery.data && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
                     <Calendar className="h-4 w-4" />
                     <span>
-                      Calendars ({selectedCalendarIds?.length ?? 0}/{calendarsQuery.data.length})
+                      Calendars ({selectedCalendarIds.length}/{calendarsQuery.data.length})
                     </span>
                   </Button>
                 </PopoverTrigger>
@@ -89,15 +183,13 @@ export default function CalendarPage() {
                         >
                           <Checkbox
                             className={getDeterministicColor(calendar.id, 'bg')}
-                            checked={selectedCalendarIds?.includes(calendar.id)}
-                            onCheckedChange={(checked: boolean) => {
-                              setSelectedCalendarIds((prev) => {
-                                if (checked) {
-                                  return [...(prev ?? []), calendar.id];
-                                } else {
-                                  return prev?.filter((id) => id !== calendar.id) ?? [];
-                                }
-                              });
+                            checked={selectedCalendarIds.includes(calendar.id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedCalendarIds((prev) =>
+                                checked
+                                  ? [...prev, calendar.id]
+                                  : prev.filter((id) => id !== calendar.id),
+                              );
                             }}
                           />
                           <span className="flex items-center gap-2 flex-1">
@@ -112,25 +204,37 @@ export default function CalendarPage() {
             )}
           </div>
         </div>
+
+        {/* ---------- CALENDAR ---------- */}
         <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
-          <MonthCalendar
-            selectionMode="single"
-            initialMonth={currentMonth}
-            filterCalendarIds={selectedCalendarIds}
-            onMonthChange={(month) => {
-              setCurrentMonth(startOfMonth(month));
+          <FullCalendar
+            ref={calendarRef}
+            firstDay={1}
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={false}
+            weekends={true}
+            height="100%"
+            // IMPORTANT: events MUST be a function for refetch to work
+            events={(_info, successCallback) => {
+              successCallback(calendarEvents);
             }}
-            onSelect={(selection) => {
-              setSelectedDate(selection.start);
-              setIsSidebarOpen(true);
+            dateClick={(info) => {
+              setSelectedDate(info.date);
+            }}
+            dayCellClassNames={(args) => {
+              const isSelected = isSameDay(args.date, selectedDate);
+              const isInCurrentMonth = isSameMonth(args.date, currentMonth);
+              return `${isSelected ? 'bg-blue-100' : isInCurrentMonth ? '' : 'bg-gray-100 text-muted-foreground'}`;
             }}
           />
         </div>
       </div>
+
       {isSidebarOpen && (
         <EventSidebar
           selectedDate={selectedDate}
-          selectedCalendarIds={selectedCalendarIds ?? []}
+          selectedCalendarIds={selectedCalendarIds}
           onClose={() => setIsSidebarOpen(false)}
         />
       )}

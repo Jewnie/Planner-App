@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import "tw-animate-css";
 
+.fc .fc-scrollgrid {
+  @apply !border-0;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

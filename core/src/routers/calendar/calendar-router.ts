@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../../trpc.js";
-import { getGoogleAccountForUser } from "../user/user-repo.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
 import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning } from "./calendar-repo.js";
@@ -32,10 +31,6 @@ export const calendarRouter = router({
       calendarIds: z.array(z.string()).optional(),
     }).optional(),
   })).query(async ({ ctx, input }) => {
-    const userAccount = await getGoogleAccountForUser(ctx.session!.user.id);
-    if (!userAccount) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "No Google account linked for user" });
-    }
     
     // Format dates to YYYY-MM-DD strings
     const formattedDates = input.dates.map(date => {
@@ -46,7 +41,7 @@ export const calendarRouter = router({
     });
     
     const items = await listEventsByAccountId(
-      userAccount.id, 
+      ctx.accountId, 
       input.range, 
       formattedDates,
       input.filters?.calendarIds

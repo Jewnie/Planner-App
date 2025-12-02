@@ -126,7 +126,7 @@ export const listEventsByAccountId = async (
       const { monthStart, monthEnd } = getMonthRange(targetDay);
       startDate = monthStart;
       endDate = monthEnd;
-    } else { // day
+    } else { 
       const { dayStart, dayEnd } = getDayRange(targetDay);
       startDate = dayStart;
       endDate = dayEnd;

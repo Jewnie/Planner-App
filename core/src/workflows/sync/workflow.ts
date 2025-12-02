@@ -1,6 +1,8 @@
 import { proxyActivities, log } from '@temporalio/workflow';
 import type * as activities from './activities.js';
 import type { CalendarInfo } from './activities.js';
+import type { calendar_v3 } from 'googleapis';
+
 
 // Configure activity retry policy
 const activityOptions = {
@@ -141,9 +143,8 @@ export async function syncGoogleCalendarWorkflow(
 
         do {
           log.info(`Downloading events batch for calendar`);
-
           const batchResult: {
-            events: activities.GoogleCalendarEventNormalized[];
+            events: calendar_v3.Schema$Event[];
             nextPageToken: string | null;
             nextSyncToken: string | null;
           } = await batchDownloadCalendarEvents({

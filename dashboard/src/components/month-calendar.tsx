@@ -316,6 +316,7 @@ export default function MonthCalendar({
 
                             // Format start time for single-day events
                             const startTime = event.startTime;
+                            // Use inline margin-top to avoid Tailwind purging issues in production
                             const topPosition = `${index * 20}px`;
 
                             // Single-day events: bullet + title + time
@@ -323,10 +324,11 @@ export default function MonthCalendar({
                               return (
                                 <div
                                   key={event.id || `event-${index}-${day.getTime()}`}
-                                  className="flex absolute h-6 items-center gap-1.5 text-xs mt-2 px-2"
+                                  className="flex absolute h-6 items-center gap-1.5 text-xs px-2"
                                   title={event.title}
                                   style={{
                                     top: topPosition,
+                                    marginTop: '0.5rem', // mt-2 = 8px = 0.5rem
                                     left: '0.5rem',
                                     width: widthValue,
                                   }}
@@ -352,12 +354,13 @@ export default function MonthCalendar({
                                 ref={multiDayEventRef}
                                 key={event.id || `event-${index}-${day.getTime()}`}
                                 className={cn(
-                                  'text-xs truncate h-6 rounded absolute px-2 py-0.5 mt-1 block border z-10',
+                                  'text-xs truncate h-6 rounded absolute px-2 py-0.5 block border z-10',
                                   backgroundColor,
                                   borderColor,
                                 )}
                                 style={{
                                   top: topPosition,
+                                  marginTop: '0.25rem', // mt-1 = 4px = 0.25rem
                                   left: '0.5rem',
                                   width: widthValue,
                                 }}

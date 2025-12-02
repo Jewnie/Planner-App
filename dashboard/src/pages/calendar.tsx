@@ -234,6 +234,9 @@ export default function CalendarPage() {
               const isInCurrentMonth = isSameMonth(args.date, currentMonth);
               return `${isSelected ? 'bg-blue-100' : isInCurrentMonth ? '' : 'bg-gray-100 text-muted-foreground'}`;
             }}
+            dayHeaderClassNames={() => {
+              return 'text-md font-medium bg-gray-50';
+            }}
             eventContent={renderEventContent}
           />
         </div>
@@ -262,15 +265,14 @@ const renderEventContent = (args: EventContentArg) => {
   return (
     <span
       className={cn(
-        'flex gap-2 items-center text-xs text-black',
+        'flex gap-2 items-center text-xs text-black mx-1',
         isAllDay || isMultiDay
           ? `p-1 border rounded-lg justify-center ${backgroundColor} ${borderColor}`
           : '',
       )}
     >
       {!isAllDay && <div className={cn(`rounded-full w-1 h-1`, bulletColor)}></div>}{' '}
-      <p className={cn(`text-xs max-w-[90%] truncate`, isAllDay ? 'text-center' : '')}>
-        {' '}
+      <p className={cn(`text-xs truncate w-[90%]`, isAllDay ? 'text-center' : '')}>
         {args.event.title}
       </p>
     </span>

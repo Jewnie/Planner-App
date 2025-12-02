@@ -316,9 +316,7 @@ export default function MonthCalendar({
 
                             // Format start time for single-day events
                             const startTime = event.startTime;
-                            if (!isSingleDay && event.allDay) {
-                              console.log('event', event);
-                            }
+                            const topPosition = index * 20;
 
                             // Single-day events: bullet + title + time
                             if (isSingleDay && !event.allDay) {
@@ -328,7 +326,7 @@ export default function MonthCalendar({
                                   className="flex absolute h-6 items-center gap-1.5 text-xs mt-2 px-2"
                                   title={event.title}
                                   style={{
-                                    top: `${index * 20}px`,
+                                    top: topPosition,
                                     left: '0.5rem',
                                     width: widthValue,
                                   }}
@@ -359,7 +357,7 @@ export default function MonthCalendar({
                                   borderColor,
                                 )}
                                 style={{
-                                  top: `${index * 20}px`,
+                                  top: topPosition,
                                   left: '0.5rem',
                                   width: widthValue,
                                 }}

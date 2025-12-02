@@ -316,8 +316,10 @@ export default function MonthCalendar({
 
                             // Format start time for single-day events
                             const startTime = event.startTime;
-                            // Use inline margin-top to avoid Tailwind purging issues in production
-                            const topPosition = `${index * 20}px`;
+                            // Calculate top positions: incorporate margin directly into top value
+                            // mt-2 = 8px, mt-1 = 4px - add these to the top calculation
+                            const topPositionSingle = `${index * 20 + 8}px`; // index * 20 + mt-2 (8px)
+                            const topPositionMulti = `${index * 20 + 4}px`; // index * 20 + mt-1 (4px)
 
                             // Single-day events: bullet + title + time
                             if (isSingleDay && !event.allDay) {
@@ -327,8 +329,7 @@ export default function MonthCalendar({
                                   className="flex absolute h-6 items-center gap-1.5 text-xs px-2"
                                   title={event.title}
                                   style={{
-                                    top: topPosition,
-                                    marginTop: '0.5rem', // mt-2 = 8px = 0.5rem
+                                    top: topPositionSingle,
                                     left: '0.5rem',
                                     width: widthValue,
                                   }}
@@ -359,8 +360,7 @@ export default function MonthCalendar({
                                   borderColor,
                                 )}
                                 style={{
-                                  top: topPosition,
-                                  marginTop: '0.25rem', // mt-1 = 4px = 0.25rem
+                                  top: topPositionMulti,
                                   left: '0.5rem',
                                   width: widthValue,
                                 }}

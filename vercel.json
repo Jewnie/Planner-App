@@ -17,6 +17,7 @@
     }
   ],
   "routes": [
+    { "src": "/google-calendar-webhook", "dest": "/core/src/server.ts" },
     { "src": "/api/(.*)", "dest": "/core/src/server.ts" },
     { "src": "/trpc/(.*)", "dest": "/core/src/server.ts" },
     { "src": "/(.*\\..+)", "dest": "/dashboard/$1" },

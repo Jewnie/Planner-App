@@ -5,10 +5,10 @@
   @apply !border-0;
 }
 
-/* .fc-h-event {
+.fc-h-event {
   border: none;
   background: none;
-} */
+}
 
 @custom-variant dark (&:is(.dark *));
 

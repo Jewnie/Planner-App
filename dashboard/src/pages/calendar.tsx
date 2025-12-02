@@ -10,6 +10,7 @@ import {
   addDays,
   isSameDay,
   isSameMonth,
+  differenceInDays,
 } from 'date-fns';
 import { EventSidebar } from '@/components/ui/event-sidebar';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,9 @@ export default function CalendarPage() {
       if (event.allDay) {
         return {
           ...baseEvent,
-          date: format(new Date(event.startTime), 'yyyy-MM-dd'),
+          // date: format(new Date(event.startTime), 'yyyy-MM-dd'),
+          start: event.startTime,
+          end: event.endTime,
           allDay: true,
         };
       }
@@ -231,7 +234,7 @@ export default function CalendarPage() {
               const isInCurrentMonth = isSameMonth(args.date, currentMonth);
               return `${isSelected ? 'bg-blue-100' : isInCurrentMonth ? '' : 'bg-gray-100 text-muted-foreground'}`;
             }}
-            // eventContent={renderEventContent}
+            eventContent={renderEventContent}
           />
         </div>
       </div>
@@ -252,11 +255,17 @@ const renderEventContent = (args: EventContentArg) => {
   const bulletColor = args.event.extendedProps.bulletColor;
   const borderColor = args.event.extendedProps.borderColor;
   const isAllDay = args.event.allDay;
+  const isMultiDay =
+    args.event.end && args.event.start
+      ? differenceInDays(args.event.end, args.event.start) > 0
+      : false;
   return (
     <span
       className={cn(
         'flex gap-2 items-center text-xs text-black',
-        isAllDay ? `p-1 border rounded-md justify-center ${backgroundColor} ${borderColor}` : '',
+        isAllDay || isMultiDay
+          ? `p-1 border rounded-lg justify-center ${backgroundColor} ${borderColor}`
+          : '',
       )}
     >
       {!isAllDay && <div className={cn(`rounded-full w-1 h-1`, bulletColor)}></div>}{' '}

@@ -1,9 +1,14 @@
 @import 'tailwindcss';
 @import "tw-animate-css";
 
-.fc .fc-scrollgrid {
+.fc-scrollgrid {
   @apply !border-0;
 }
+
+/* .fc-h-event {
+  border: none;
+  background: none;
+} */
 
 @custom-variant dark (&:is(.dark *));
 

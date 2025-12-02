@@ -21,6 +21,8 @@ import { getDeterministicColor } from '@/utils/colors';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import type { EventContentArg } from '@fullcalendar/core/index.js';
+import { cn } from '@/lib/utils';
 
 export default function CalendarPage() {
   const [searchParams] = useSearchParams();
@@ -72,9 +74,11 @@ export default function CalendarPage() {
       const baseEvent = {
         id: event.id,
         title: event.title,
-        backgroundColor: getDeterministicColor(event.calendarId, 'bg'),
-        borderColor: getDeterministicColor(event.calendarId, 'border'),
-        textColor: getDeterministicColor(event.calendarId, 'text'),
+        extendedProps: {
+          bulletColor: getDeterministicColor(event.calendarId, 'bg', 500),
+          borderColor: getDeterministicColor(event.calendarId, 'border', 500),
+          backgroundColor: getDeterministicColor(event.calendarId, 'bg', 100),
+        },
       };
 
       if (event.allDay) {
@@ -227,6 +231,7 @@ export default function CalendarPage() {
               const isInCurrentMonth = isSameMonth(args.date, currentMonth);
               return `${isSelected ? 'bg-blue-100' : isInCurrentMonth ? '' : 'bg-gray-100 text-muted-foreground'}`;
             }}
+            // eventContent={renderEventContent}
           />
         </div>
       </div>
@@ -241,3 +246,21 @@ export default function CalendarPage() {
     </div>
   );
 }
+
+const renderEventContent = (args: EventContentArg) => {
+  const backgroundColor = args.event.extendedProps.backgroundColor;
+  const bulletColor = args.event.extendedProps.bulletColor;
+  const borderColor = args.event.extendedProps.borderColor;
+  const isAllDay = args.event.allDay;
+  return (
+    <span
+      className={cn(
+        'flex gap-2 items-center text-xs text-black',
+        isAllDay ? `p-1 border rounded-md justify-center ${backgroundColor} ${borderColor}` : '',
+      )}
+    >
+      {!isAllDay && <div className={cn(`rounded-full w-1 h-1`, bulletColor)}></div>}{' '}
+      <p className={cn(`text-xs`, isAllDay ? 'text-center' : '')}> {args.event.title}</p>
+    </span>
+  );
+};

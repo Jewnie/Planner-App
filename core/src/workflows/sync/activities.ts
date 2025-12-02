@@ -128,51 +128,51 @@ export async function updateCalendarProviderSyncToken(params:{
   await db.update(calendarProviders).set({ syncToken: params.syncToken }).where(eq(calendarProviders.accountId, params.accountId));
 }
 
-function normalizeGoogleEvent(item: calendar_v3.Schema$Event): GoogleCalendarEventNormalized {
-  const isAllDay = !!item.start?.date;   // Only start.date exists
+// function normalizeGoogleEvent(item: calendar_v3.Schema$Event): GoogleCalendarEventNormalized {
+//   const isAllDay = !!item.start?.date;   // Only start.date exists
 
-  let start: Date;
-  let end: Date;
-  let timeZone: string | undefined;
+//   let start: Date;
+//   let end: Date;
+//   let timeZone: string | undefined;
 
-  if (isAllDay) {
-    // Google all-day, exclusive end date
-    start = new Date(item.start!.date!);  // e.g. 2025-12-31
+//   if (isAllDay) {
+//     // Google all-day, exclusive end date
+//     start = new Date(item.start!.date!);  // e.g. 2025-12-31
 
-    const endExclusive = new Date(item.end!.date!);  
-    end = new Date(endExclusive);
-    end.setDate(end.getDate() - 1);       // inclusive end (correct multi-day)
-    end.setHours(23, 59, 59, 999);
-  } else {
-    // Timed event
-    start = new Date(item.start!.dateTime!);
-    end = new Date(item.end!.dateTime!);
-    // Extract timezone from the event (usually same for start and end)
-    timeZone = (item.start?.timeZone || item.end?.timeZone) || undefined;
-  }
+//     const endExclusive = new Date(item.end!.date!);  
+//     end = new Date(endExclusive);
+//     end.setDate(end.getDate() - 1);       // inclusive end (correct multi-day)
+//     end.setHours(23, 59, 59, 999);
+//   } else {
+//     // Timed event
+//     start = new Date(item.start!.dateTime!);
+//     end = new Date(item.end!.dateTime!);
+//     // Extract timezone from the event (usually same for start and end)
+//     timeZone = (item.start?.timeZone || item.end?.timeZone) || undefined;
+//   }
 
-  // Map attendees from Google format to our format
-  const attendees = item.attendees?.map(att => ({
-    email: att.email ?? undefined,
-    displayName: att.displayName ?? undefined,
-    responseStatus: att.responseStatus ?? undefined,
-  }));
+//   // Map attendees from Google format to our format
+//   const attendees = item.attendees?.map(att => ({
+//     email: att.email ?? undefined,
+//     displayName: att.displayName ?? undefined,
+//     responseStatus: att.responseStatus ?? undefined,
+//   }));
 
-  return {
-    id: item.id!,
-    title: item.summary || undefined,
-    description: item.description || undefined,
-    location: item.location || undefined,
-    start,
-    end,
-    allDay: isAllDay,
-    attendees: attendees && attendees.length > 0 ? attendees : undefined,
-    recurrence: item.recurrence || undefined, // Google provides recurrence as string array (RRULE, EXDATE, etc.)
-    timeZone: timeZone || undefined,
-    status: item.status || undefined, // "confirmed", "tentative", "cancelled" (deleted)
-    raw: item,
-  };
-}
+//   return {
+//     id: item.id!,
+//     title: item.summary || undefined,
+//     description: item.description || undefined,
+//     location: item.location || undefined,
+//     start,
+//     end,
+//     allDay: isAllDay,
+//     attendees: attendees && attendees.length > 0 ? attendees : undefined,
+//     recurrence: item.recurrence || undefined, // Google provides recurrence as string array (RRULE, EXDATE, etc.)
+//     timeZone: timeZone || undefined,
+//     status: item.status || undefined, // "confirmed", "tentative", "cancelled" (deleted)
+//     raw: item,
+//   };
+// }
 
 
 /**
@@ -184,7 +184,7 @@ export async function batchDownloadCalendarEvents(params:{
   timeMin: string ,
   pageToken: string | null ,
   syncToken: string | null ,
-}): Promise<{ events: GoogleCalendarEventNormalized[]; nextPageToken: string | null , nextSyncToken: string | null  }> {
+}) {
   const oauth2 = await getGoogleOAuthClient(params.accountId);
   const calendarClient = google.calendar({ version: 'v3', auth: oauth2 });
 
@@ -201,11 +201,11 @@ const response = await calendarClient.events.list({
 
 
   const items = response.data.items || [];
-  const events: GoogleCalendarEventNormalized[] = items.map(normalizeGoogleEvent);
+  // const events: GoogleCalendarEventNormalized[] = items.map(normalizeGoogleEvent);
 
 
   return {
-    events,
+    events : items,
     nextPageToken: response.data.nextPageToken ?? null,
     nextSyncToken: response.data.nextSyncToken ?? null,
   };
@@ -355,7 +355,7 @@ export async function updateCalendarSyncToken(params:{
  */
 export async function upsertEvents(
   calendarId: string,
-  googleEvents: GoogleCalendarEventNormalized[]
+  googleEvents: calendar_v3.Schema$Event[]
 ): Promise<{ created: number; updated: number }> {
   let created = 0;
   let updated = 0;
@@ -363,14 +363,10 @@ export async function upsertEvents(
   for (const googleEvent of googleEvents) {
     // Parse start and end times - ensure they are Date objects
     // (Temporal workflows serialize Date objects, so they may come back as strings)
-    const startTime = googleEvent.start instanceof Date 
-      ? googleEvent.start 
-      : new Date(googleEvent.start);
-    const endTime = googleEvent.end instanceof Date 
-      ? googleEvent.end 
-      : new Date(googleEvent.end);
+    const startTime = googleEvent.start?.dateTime ? new Date(googleEvent.start.dateTime) : new Date(googleEvent.start?.date ?? '');
+    const endTime = googleEvent.end?.dateTime ? new Date(googleEvent.end.dateTime) : new Date(googleEvent.end?.date ?? '');
 
-    const isAllDay = googleEvent.allDay;
+    const isAllDay = googleEvent.start?.date ? true : false;
 
     // Check if event already exists
     const existing = await db
@@ -379,7 +375,7 @@ export async function upsertEvents(
       .where(
         and(
           eq(events.calendarId, calendarId),
-          eq(events.providerEventId, googleEvent.id)
+          eq(events.providerEventId, googleEvent.id ?? 'unknown')
         )
       )
       .then(rows => rows[0]);
@@ -389,15 +385,15 @@ export async function upsertEvents(
       await db
         .update(events)
         .set({
-          title: googleEvent.title || 'Untitled Event',
+          title: googleEvent.summary || 'Untitled',
           description: googleEvent.description || null,
           location: googleEvent.location || null,
           startTime,
           endTime,
           allDay: isAllDay,
           recurringRule: googleEvent.recurrence?.[0] || null,
-          timeZone: googleEvent.timeZone || null,
-          rawData: googleEvent.raw || null,
+          timeZone: googleEvent.start?.timeZone || null,
+          rawData: googleEvent || null,
           updatedAt: new Date(),
         })
         .where(eq(events.id, existing.id));
@@ -425,16 +421,16 @@ export async function upsertEvents(
         .insert(events)
         .values({
           calendarId,
-          providerEventId: googleEvent.id,
-          title: googleEvent.title || 'Untitled Event',
+          providerEventId: googleEvent.id ?? 'unknown',
+          title: googleEvent.summary || 'Untitled Event',
           description: googleEvent.description || null,
           location: googleEvent.location || null,
           startTime,
           endTime,
           allDay: isAllDay,
           recurringRule: googleEvent.recurrence?.[0] || null,
-          timeZone: googleEvent.timeZone || null,
-          rawData: googleEvent.raw || null,
+          timeZone: googleEvent.start?.timeZone || null,
+          rawData: googleEvent || null,
         })
         .returning();
 

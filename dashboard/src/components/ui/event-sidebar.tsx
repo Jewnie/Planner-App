@@ -7,6 +7,7 @@ import { format, isSameDay } from 'date-fns';
 import { Spinner } from './spinner';
 import { useState } from 'react';
 import type { CalendarEvent } from '../month-calendar';
+import { Plus } from 'lucide-react';
 
 function formatEventTime(event: CalendarEvent): string {
   const start = event.startTime;
@@ -79,6 +80,8 @@ function EventRawData({ event }: { event: CalendarEvent }) {
 export function EventSidebar(props: {
   selectedDate: Date | null;
   selectedCalendarIds: string[];
+  isCreatingEvent: boolean;
+  setIsCreatingEvent: () => void;
   onClose?: () => void;
 }) {
   const selectedDate = props.selectedDate ?? new Date();
@@ -99,42 +102,55 @@ export function EventSidebar(props: {
   return (
     <Sidebar className="xl:w-96 lg:w-74 md:w-64 sm:w-64" side="right">
       <SidebarContent className="bg-white">
-        <SidebarHeader>
-          <div className="flex items-start justify-between w-full">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Events</h2>
-              <p className="text-sm text-muted-foreground">{dateLabel}</p>
-            </div>
-            {props.onClose && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={props.onClose}
-                aria-label="Close sidebar"
-                className="shrink-0"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+        <SidebarHeader className="p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start justify-between w-full">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">Events</h2>
+                <p className="text-sm text-muted-foreground">{dateLabel}</p>
+              </div>
+              {props.onClose && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={props.onClose}
+                  aria-label="Close sidebar"
+                  className="shrink-0"
                 >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </Button>
+              )}
+            </div>
+            <div className="flex">
+              <Button
+                onClick={props.setIsCreatingEvent}
+                className="rounded-xl"
+                size="sm"
+                variant="outline"
+              >
+                <Plus />
+                Add Event
               </Button>
-            )}
+            </div>
           </div>
         </SidebarHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex flex-col justify-between overflow-y-auto px-4 py-4">
           {dayEventsResult.isLoading && (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-8 h-full">
               <Spinner />
             </div>
           )}
@@ -155,10 +171,10 @@ export function EventSidebar(props: {
             <div className="flex flex-col gap-3">
               {events.map((event: CalendarEvent) => (
                 <Card key={event.id || `event-${Math.random()}`} className="overflow-hidden">
-                  <CardHeader className="pb-3">
+                  <CardHeader>
                     <CardTitle className="text-base leading-tight">{event.title}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 pt-0">
+                  <CardContent className="space-y-1 pt-0">
                     {formatEventTime(event) && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <svg

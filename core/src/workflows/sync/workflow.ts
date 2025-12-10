@@ -26,6 +26,8 @@ const {
   updateCalendarSyncToken,
   getCalendarSyncToken,
   handleIntegrationUpsertion,
+  clearCalendarProviderSyncToken,
+  clearCalendarSyncTokens,
 } = proxyActivities<typeof activities>(activityOptions);
 
 export interface SyncWorkflowInput {
@@ -33,6 +35,7 @@ export interface SyncWorkflowInput {
   userId: string;
   timeMin?: string; // ISO date string, defaults to 30 days ago
   timeMax?: string; // ISO date string, defaults to 1 year from now
+  forceFullSync?: boolean; // If true, clears sync tokens to force a full resync
 }
 
 export interface SyncWorkflowOutput {
@@ -67,8 +70,14 @@ export async function syncGoogleCalendarWorkflow(
   const provider = await getCalendarProvider({accountId: input.accountId, providerName: 'google'});
   await handleIntegrationUpsertion({accountId: input.accountId, type: 'google', status: 'syncing'});
 
+  // If forceFullSync is true, clear all sync tokens to force a full resync
+  if (input.forceFullSync) {
+    log.info('Force full sync requested - clearing sync tokens');
+    await clearCalendarProviderSyncToken({accountId: input.accountId, providerName: 'google'});
+    await clearCalendarSyncTokens({providerId: provider.id});
+  }
 
-  let accountSyncToken: string  | null = provider.syncToken; 
+  let accountSyncToken: string  | null = input.forceFullSync ? null : provider.syncToken; 
   let allCalendars: CalendarInfo[] = [];
   let pageToken: string | null = null;
 
@@ -133,8 +142,8 @@ export async function syncGoogleCalendarWorkflow(
           await updateCalendarProviderSyncToken({accountId: input.accountId,providerName: 'google', syncToken: accountSyncToken});
         }
 
-        // Get existing calendar sync token from database
-        let calendarSyncToken: string | null = await getCalendarSyncToken({ calendarId });
+        // Get existing calendar sync token from database (null if forceFullSync)
+        let calendarSyncToken: string | null = input.forceFullSync ? null : await getCalendarSyncToken({ calendarId });
 
         // Batch download events
         let calendarPageToken: string | null = null;

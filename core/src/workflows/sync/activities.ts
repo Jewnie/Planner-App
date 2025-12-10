@@ -351,6 +351,30 @@ export async function updateCalendarSyncToken(params:{
 }
 
 /**
+ * Clear sync token for a calendar provider (forces full sync on next sync)
+ */
+export async function clearCalendarProviderSyncToken(params:{
+  accountId: string,
+  providerName: string,
+}): Promise<void> {
+  await db.update(calendarProviders).set({ syncToken: null }).where(
+    and(
+      eq(calendarProviders.accountId, params.accountId),
+      eq(calendarProviders.name, params.providerName)
+    )
+  );
+}
+
+/**
+ * Clear sync tokens for all calendars belonging to a provider (forces full sync on next sync)
+ */
+export async function clearCalendarSyncTokens(params:{
+  providerId: string,
+}): Promise<void> {
+  await db.update(calendars).set({ syncToken: null }).where(eq(calendars.providerId, params.providerId));
+}
+
+/**
  * Save or update events in database (batch operation)
  */
 export async function upsertEvents(

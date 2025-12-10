@@ -10,7 +10,7 @@ export const processCalendarWatchNotification = async(headers: {
     try {
       const { channelId } = headers;
     
-      // Look up the active watch (not deleted and not expired)
+      // Look up the active watch
       const watch = await db.query.calendarWatches.findFirst({
         where: (watch, { eq, isNull, gt, and }) => and(
           eq(watch.channelId, channelId), 

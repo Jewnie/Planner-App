@@ -1,6 +1,6 @@
 import { proxyActivities, log } from '@temporalio/workflow';
 import type * as activities from './activities.js';
-import type { CalendarInfo } from './activities.js';
+import type { GoogleCalendarInfo } from './activities.js';
 import type { calendar_v3 } from 'googleapis';
 
 
@@ -26,6 +26,8 @@ const {
   updateCalendarSyncToken,
   getCalendarSyncToken,
   handleIntegrationUpsertion,
+  clearCalendarProviderSyncToken,
+  clearCalendarSyncTokens,
 } = proxyActivities<typeof activities>(activityOptions);
 
 export interface SyncWorkflowInput {
@@ -33,6 +35,7 @@ export interface SyncWorkflowInput {
   userId: string;
   timeMin?: string; // ISO date string, defaults to 30 days ago
   timeMax?: string; // ISO date string, defaults to 1 year from now
+  forceFullSync?: boolean; // If true, clears sync tokens to force a full resync
 }
 
 export interface SyncWorkflowOutput {
@@ -67,19 +70,22 @@ export async function syncGoogleCalendarWorkflow(
   const provider = await getCalendarProvider({accountId: input.accountId, providerName: 'google'});
   await handleIntegrationUpsertion({accountId: input.accountId, type: 'google', status: 'syncing'});
 
+  // If forceFullSync is true, clear all sync tokens to force a full resync
+  if (input.forceFullSync) {
+    log.info('Force full sync requested - clearing sync tokens');
+    await clearCalendarProviderSyncToken({accountId: input.accountId, providerName: 'google'});
+    await clearCalendarSyncTokens({providerId: provider.id});
+  }
 
-  let accountSyncToken: string  | null = provider.syncToken; 
-  let allCalendars: CalendarInfo[] = [];
+  let accountSyncToken: string  | null = input.forceFullSync ? null : provider.syncToken; 
+  let allCalendars: GoogleCalendarInfo[] = [];
   let pageToken: string | null = null;
 
     // Step 2: Fetch list of calendars from Google
     log.info('Fetching calendars from Google');
     do {
-      const result: {
-        calendars: CalendarInfo[];
-        nextPageToken?: string | null;
-        nextSyncToken?: string | null;
-      } = await fetchGoogleCalendars({accountId: input.accountId, nextPageToken: pageToken || undefined, nextSyncToken: accountSyncToken || undefined});
+      const result: { calendars: GoogleCalendarInfo[], nextPageToken: string | null, nextSyncToken: string | null } = await fetchGoogleCalendars({accountId: input.accountId, nextPageToken: pageToken || undefined, nextSyncToken: accountSyncToken || undefined});
+
       allCalendars = [...allCalendars, ...result.calendars];
       pageToken = result.nextPageToken || null;
       accountSyncToken = result.nextSyncToken || null;
@@ -97,6 +103,7 @@ export async function syncGoogleCalendarWorkflow(
           googleCalendarId: calendar.id,
           name: calendar.summary,
           color: calendar.foregroundColor,
+          accessRole: calendar.accessRole,
           metadata: {
             colorId: calendar.colorId,
             backgroundColor: calendar.backgroundColor,
@@ -133,8 +140,8 @@ export async function syncGoogleCalendarWorkflow(
           await updateCalendarProviderSyncToken({accountId: input.accountId,providerName: 'google', syncToken: accountSyncToken});
         }
 
-        // Get existing calendar sync token from database
-        let calendarSyncToken: string | null = await getCalendarSyncToken({ calendarId });
+        // Get existing calendar sync token from database (null if forceFullSync)
+        let calendarSyncToken: string | null = input.forceFullSync ? null : await getCalendarSyncToken({ calendarId });
 
         // Batch download events
         let calendarPageToken: string | null = null;

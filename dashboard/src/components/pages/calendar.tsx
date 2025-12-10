@@ -24,9 +24,11 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventContentArg } from '@fullcalendar/core/index.js';
 import { cn } from '@/lib/utils';
+import { CreateEventPopover } from '@/components/create-event-popover';
 
 export default function CalendarPage() {
   const [searchParams] = useSearchParams();
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
   const viewParam = searchParams.get('view') || 'month';
   const view = (['month', 'week', 'day'].includes(viewParam) ? viewParam : 'month') as CalendarView;
 
@@ -247,8 +249,15 @@ export default function CalendarPage() {
           selectedDate={selectedDate}
           selectedCalendarIds={selectedCalendarIds}
           onClose={() => setIsSidebarOpen(false)}
+          isCreatingEvent={isCreatingEvent} //TODO:necessary?
+          setIsCreatingEvent={() => setIsCreatingEvent(true)}
         />
       )}
+      <CreateEventPopover
+        onClose={() => setIsCreatingEvent(false)}
+        open={isCreatingEvent}
+        selectedDate={selectedDate}
+      />
     </div>
   );
 }

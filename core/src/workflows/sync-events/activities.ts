@@ -13,14 +13,16 @@ export const syncEventsIncremental =  async (params:{calendarId: string, account
     let pageToken: string | null = null;
     let nextSyncToken: string | null = null;
     let totalDeleted = 0;
+    let isFirstPage = true; // Track if this is the first page
 
 do{
-    const events = await batchDownloadCalendarEvents({ // todo make this a repo function 
+    // Only use syncToken on the first page. For subsequent pages, only use pageToken
+    const events = await batchDownloadCalendarEvents({ 
         accountId,
-        calendarId: googleCalendarId, // Use Google Calendar ID for API call
+        calendarId: googleCalendarId,
         pageToken,
         timeMin,
-        syncToken: calendarSyncToken,
+        syncToken: isFirstPage ? calendarSyncToken : null, // Only use sync token on first page
     })
 
     // Separate events into active and deleted (cancelled)
@@ -31,7 +33,7 @@ do{
 
     // Upsert active events
     if(activeEvents.length > 0){
-      await upsertEvents(calendarId, activeEvents); // Use database calendar ID for upsert
+      await upsertEvents(calendarId, activeEvents);
     }
 
     // Delete cancelled events from database
@@ -40,16 +42,23 @@ do{
       totalDeleted += deletedCount;
     }
   
-  
-   pageToken = events.nextPageToken;
-   nextSyncToken = events.nextSyncToken;
+    // Capture nextSyncToken only from the last page
+    if (events.nextSyncToken) {
+      nextSyncToken = events.nextSyncToken;
+    }
+    
+    pageToken = events.nextPageToken;
+    isFirstPage = false; // After first page, we're paginating
   
   }while(pageToken !== null)
 
+    // Update sync token if we got one
     if(nextSyncToken){
-      await updateCalendarSyncToken({ calendarId, syncToken: nextSyncToken }); // Use database calendar ID
+      await updateCalendarSyncToken({ calendarId, syncToken: nextSyncToken });
+    } else if (!calendarSyncToken) {
+      // If we didn't have a sync token and didn't get one, log a warning
+      console.warn(`[Sync Events] No sync token received after sync. Calendar might need full resync.`);
     }
 
     console.log(`[Sync Events] Deleted ${totalDeleted} cancelled events`);
-
 }

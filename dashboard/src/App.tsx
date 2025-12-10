@@ -3,12 +3,12 @@ import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
-import HomePage from '@/pages/dashboard';
-import InboxPage from '@/pages/inbox';
-import CalendarPage from '@/pages/calendar';
-import SearchPage from '@/pages/search';
-import IntegrationsPage from '@/pages/integrations';
-import LoginPage from '@/pages/login';
+import HomePage from '@/components/pages/dashboard';
+import InboxPage from '@/components/pages/inbox';
+import CalendarPage from '@/components/pages/calendar';
+import SearchPage from '@/components/pages/search';
+import IntegrationsPage from '@/components/pages/integrations';
+import LoginPage from '@/components/pages/login';
 import { authClient } from './lib/auth-client';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

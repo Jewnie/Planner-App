@@ -41,7 +41,8 @@ export interface GoogleCalendarEventNormalized {
   }
   
 
-export interface CalendarInfo {
+export interface GoogleCalendarInfo {
+  accessRole?: string | undefined
   id: string;
   summary: string;
   colorId?: string;
@@ -72,11 +73,7 @@ export async function fetchGoogleCalendars(
   params:{accountId: string,
     nextPageToken?: string | null,
     nextSyncToken?: string | null,}  
-): Promise<{
-  calendars: CalendarInfo[];
-  nextPageToken?: string | null;
-  nextSyncToken?: string | null;
-}> {
+){
   try {
     const oauth2 = await getGoogleOAuthClient(params.accountId);
     const calendarClient = google.calendar({ version: 'v3', auth: oauth2 });
@@ -87,23 +84,19 @@ export async function fetchGoogleCalendars(
     });
     
     const items = response.data.items || [];
-    const calendars: CalendarInfo[] = items.map((item: calendar_v3.Schema$CalendarListEntry) => ({
+    const calendars = items.map((item: calendar_v3.Schema$CalendarListEntry) => ({
       id: item.id || '',
       summary: item.summary || 'Untitled Calendar',
       colorId: item.colorId || undefined,
       backgroundColor: item.backgroundColor || undefined,
       foregroundColor: item.foregroundColor || undefined,
+      accessRole: item.accessRole || undefined,
     }));
     
-    return {
-      calendars,
-      nextPageToken: response.data.nextPageToken || null,
-      nextSyncToken: response.data.nextSyncToken || null,
-    };
+    return { calendars, nextPageToken: response.data.nextPageToken || null, nextSyncToken: response.data.nextSyncToken || null };
   } catch (error) {
-    console.error(`[Activity] Error in fetchGoogleCalendars:`, error);
-    throw error;
-  }
+   throw new Error(`[Activity] Error in fetchGoogleCalendars: ${error}`);
+  } 
 }
 
 export async function handleIntegrationUpsertion(params:{
@@ -261,6 +254,7 @@ export async function upsertCalendar(params:{
   name: string,
   color?: string,  
   metadata?: Record<string, unknown>,
+  accessRole?: string | undefined,
  
 }): Promise<string> {
   // Check if calendar already exists (by provider and provider calendar ID)
@@ -284,7 +278,7 @@ export async function upsertCalendar(params:{
         color: params.color,
         providerCalendarId: params.googleCalendarId, // Ensure it's up to date
         metadata: params.metadata || existing.metadata,
-     
+        accessRole: params.accessRole as "owner" | "writer" | "reader" | "none" | "freeBusyReader" | undefined,
       })
       .where(eq(calendars.id, existing.id))
       .returning();
@@ -301,7 +295,7 @@ export async function upsertCalendar(params:{
       color: params.color,
       providerCalendarId: params.googleCalendarId,
       metadata: params.metadata || {},
-     
+      accessRole: params.accessRole as "owner" | "writer" | "reader" | "none" | "freeBusyReader" | undefined,
     })
     .returning();
 
@@ -348,6 +342,30 @@ export async function updateCalendarSyncToken(params:{
   syncToken: string,
 }): Promise<void> {
   await db.update(calendars).set({ syncToken: params.syncToken }).where(and(eq(calendars.id, params.calendarId)));
+}
+
+/**
+ * Clear sync token for a calendar provider (forces full sync on next sync)
+ */
+export async function clearCalendarProviderSyncToken(params:{
+  accountId: string,
+  providerName: string,
+}): Promise<void> {
+  await db.update(calendarProviders).set({ syncToken: null }).where(
+    and(
+      eq(calendarProviders.accountId, params.accountId),
+      eq(calendarProviders.name, params.providerName)
+    )
+  );
+}
+
+/**
+ * Clear sync tokens for all calendars belonging to a provider (forces full sync on next sync)
+ */
+export async function clearCalendarSyncTokens(params:{
+  providerId: string,
+}): Promise<void> {
+  await db.update(calendars).set({ syncToken: null }).where(eq(calendars.providerId, params.providerId));
 }
 
 /**

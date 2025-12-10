@@ -7,20 +7,20 @@ import { fromNodeHeaders } from 'better-auth/node';
 import type { IncomingHttpHeaders } from 'http';
 
 
-export async function getValidGoogleOAuthClient(
+export async function getValidGoogleOAuthClient(params: {
   accountId: string,
-  requestHeaders?: IncomingHttpHeaders
+  requestHeaders?: IncomingHttpHeaders}
 ): Promise<Auth.OAuth2Client> {
 
   
   const userAccount = await db
     .select()
     .from(account)
-    .where(eq(account.id, accountId))
+    .where(eq(account.id, params.accountId))
     .then(rows => rows[0]);
 
   if (!userAccount || userAccount.providerId !== 'google') {
-    throw new Error(`No Google account found for account ID: ${accountId}`);
+    throw new Error(`No Google account found for account ID: ${params.accountId}`);
   }
 
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
@@ -36,7 +36,7 @@ export async function getValidGoogleOAuthClient(
         accountId: userAccount.id,
         userId: userAccount.userId,
       },
-      headers: requestHeaders ? fromNodeHeaders(requestHeaders) : fromNodeHeaders({} as IncomingHttpHeaders),
+      headers: params.requestHeaders ? fromNodeHeaders(params.requestHeaders) : fromNodeHeaders({} as IncomingHttpHeaders),
     });
 
     accessToken = accessTokenResult.accessToken;
@@ -64,6 +64,6 @@ export async function getValidGoogleOAuthClient(
 export async function getValidGoogleOAuthClientForActivity(
   accountId: string
 ): Promise<Auth.OAuth2Client> {
-  return getValidGoogleOAuthClient(accountId);
+  return getValidGoogleOAuthClient({accountId: accountId});
 }
 

@@ -4,11 +4,13 @@ import { db } from "../../db.js";
 
 import { calendarProviders, calendars, calendarWatches, events } from "../../db/calendar-schema.js";
 import { account } from "../../db/auth-schema.js";
-import { eq, and, or, gte, lte, inArray, isNull, isNotNull, gt, desc } from "drizzle-orm";
+import { eq, and, or, inArray, isNull, isNotNull, gt, desc, lt } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
 import RRulePkg from "rrule";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
+import { getValidGoogleOAuthClient } from "../../lib/google-auth.js";
+import { google } from "googleapis";
 
 /**
  * Convert a regular Date to UTCDate for UTC-aware calculations
@@ -57,7 +59,22 @@ export async function getCalendarProvidersForAccount(params: { accountId: string
     .select()
     .from(calendarProviders)
     .where(eq(calendarProviders.accountId, params.accountId))
-    
+}
+
+export const assertCalenderHasProvider = async (params: { accountId: string, calendarId: string }) => {
+
+  const provider = await db.select({id: calendarProviders.id, providerType: calendarProviders.name}).from(calendarProviders).where(and(eq(calendarProviders.accountId, params.accountId)));
+
+  if (provider.length === 0) {
+    throw new Error("Provider not found");
+  }
+
+  const calendar = await db.select({id: calendars.id, calendarProviderCalendarId: calendars.providerCalendarId}).from(calendars).where(and(eq(calendars.providerId, provider[0].id), eq(calendars.id, params.calendarId)));
+  if (calendar.length === 0) {
+    throw new Error("Calendar not found");
+  }
+
+  return {calendarId: calendar[0].id, providerId: provider[0].id, providerType: provider[0].providerType, calendarProviderCalendarId: calendar[0].calendarProviderCalendarId};
 }
 
 export const assertUserAccountExists = async (userId: string) => {
@@ -144,10 +161,11 @@ export const listEventsByAccountId = async (
   // Events that overlap with any range: (startTime <= endDate AND endTime >= startDate)
   const rangeConditions = dateRanges.map(({ startDate, endDate }) =>
     and(
-      lte(events.startTime, endDate),
-      gte(events.endTime, startDate)
+      lt(events.startTime, endDate),
+      gt(events.endTime, startDate)
     )
   );
+  
 
   // Query events from the database
   // Events that overlap with any of the date ranges
@@ -288,5 +306,140 @@ export async function checkIfSyncIsRunning(params: {
   }
 }
 
+export const createAllDayEvent = async (params: {
+  accountId: string;
+  calendarId: string;
+  title: string;
+  description?: string;
+  location?: string;
+  recurringRule?: string;
+  start: {
+    date: string;
+    timeZone: string;
+  };
+  end: {
+    date: string;
+    timeZone: string;
+  };
+}) => {
+  let providerEventId = "pending";
+  let calendarProviderCalendarId : null | string = null;
+  if(params.calendarId){
+   const calendarProvider = await assertCalenderHasProvider({accountId: params.accountId, calendarId: params.calendarId})
+   calendarProviderCalendarId = calendarProvider.calendarProviderCalendarId;
+   console.log("Calendar provider", calendarProvider);
+  } else {
+    providerEventId = "internalCalendar"; // Later will be replaced by internal calendar's id ? TODO: Allow user to create internal calendars
+  }
+  console.log("inserting event into db");
+  const dbEvent = await db.insert(events).values({
+    startTime: new Date(params.start.date),
+    endTime: new Date(params.end.date),
+    allDay: true,
+    providerEventId : providerEventId,
+    title: params.title,
+    description: params.description,
+    location: params.location,
+    rawData:{},
+    timeZone: params.start.timeZone,
+    recurringRule:params.recurringRule || null,
+    calendarId: params.calendarId as string
+  }).returning();
+
+  if(params.calendarId && calendarProviderCalendarId){ // TODO: update this when users can create internal calendars
+    console.log("notifying provider of created event");
+    await notifyProviderOfCreatedEvent({dbEvent: dbEvent[0], accountId: params.accountId, calendarProviderCalendarId: calendarProviderCalendarId})
+  }
+
+  return dbEvent[0];
+}
+
+export const createTimedEvent = async (params: {
+  accountId: string;
+  calendarId: string;
+  title: string;
+  description?: string;
+  location?: string;
+  recurringRule?: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+})=>{
+  let providerEventId = "pending";
+  let calendarProviderCalendarId : null | string = null;
+  if(params.calendarId){
+    const calendarProvider = await assertCalenderHasProvider({accountId: params.accountId, calendarId: params.calendarId})
+    calendarProviderCalendarId = calendarProvider.calendarProviderCalendarId;
+    console.log("Calendar provider", calendarProvider);
+  } else {
+    providerEventId = "internalCalendar"; // Later will be replaced by internal calendar's id ? TODO: Allow user to create internal calendars
+  }
+  console.log("inserting event into db");
+  const dbEvent = await db.insert(events).values({
+   calendarId: params.calendarId,
+   startTime: new Date(params.start.dateTime),
+   endTime: new Date(params.end.dateTime),
+   allDay:false,
+   providerEventId : providerEventId,
+   title: params.title,
+   description: params.description,
+   location: params.location,
+   rawData:{},
+   timeZone: params.start.timeZone,
+   recurringRule:params.recurringRule || null,
+  }).returning();
+  if(params.calendarId && calendarProviderCalendarId){ // TODO: update this when users can create internal calendars
+    console.log("notifying provider of created event");
+    await notifyProviderOfCreatedEvent({dbEvent: dbEvent[0], accountId: params.accountId, calendarProviderCalendarId: calendarProviderCalendarId})
+  }
+  return dbEvent[0];
+}
+
+export const notifyProviderOfCreatedEvent = async (params: {dbEvent: InferSelectModel<typeof events>, accountId: string, calendarProviderCalendarId: string}) => {
+
+  const authClient = await getValidGoogleOAuthClient({accountId: params.accountId});
+  const calendarClient = google.calendar({ version: "v3", auth: authClient });
+  const startTime = params.dbEvent.allDay ? params.dbEvent.startTime.toISOString().slice(0, 10) : params.dbEvent.startTime.toISOString();
+  const endTime = params.dbEvent.allDay ? params.dbEvent.endTime.toISOString().slice(0, 10) : params.dbEvent.endTime.toISOString();
+    const providerResponse = await calendarClient.events.insert({
+      calendarId: params.calendarProviderCalendarId,
+      requestBody: {
+        summary: params.dbEvent.title,
+        description: params.dbEvent.description,
+        location: params.dbEvent.location,
+        start: params.dbEvent.allDay ? { date: startTime } : { dateTime: startTime, timeZone: params.dbEvent.timeZone },
+        end: params.dbEvent.allDay ? { date: endTime } : { dateTime: endTime, timeZone: params.dbEvent.timeZone },
+      },
+    });
+    if(providerResponse.status === 200){
+      console.log("updating provider event id");
+      await updateEventProviderEventId({providerEventId: providerResponse.data.id as string, eventId: params.dbEvent.id});
+      return providerResponse.data;
+    } else {
+      throw new Error("Failed to create event in provider");
+    }
+
+}
 
 
+export const updateEventProviderEventId = async (params :{providerEventId: string, eventId: string}) => {
+  await db.update(events).set({providerEventId: params.providerEventId}).where(eq(events.id, params.eventId));
+}
+
+export const assertUserHasWritePermissionToCalendar = async (params: {accountId: string, calendarId: string}) => {
+  const provider = await assertCalenderHasProvider({accountId: params.accountId, calendarId: params.calendarId})
+  const calendar = await db.query.calendars.findFirst({
+    where: and(eq(calendars.id, params.calendarId), eq(calendars.providerId, provider.providerId)),
+  })
+  if(!calendar || !provider) {
+    throw new Error("Calendar not found");
+  }
+  if(calendar.accessRole !== 'owner' && calendar.accessRole !== 'writer'){
+    throw new Error("FORBIDDEN");
+  }
+}

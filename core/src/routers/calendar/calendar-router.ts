@@ -2,12 +2,12 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../../trpc.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning } from "./calendar-repo.js";
+import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning, createAllDayEvent, createTimedEvent, assertUserHasWritePermissionToCalendar } from "./calendar-repo.js";
 import { formatDateToYYYYMMDD } from "../../lib/date-utils.js";
+
+
+
 export const calendarRouter = router({
- 
-
-
 
   listCalendars: protectedProcedure.query(async ({ ctx }) => {
     
@@ -21,6 +21,7 @@ export const calendarRouter = router({
     return userCalendars.map(calendar => ({
       id: calendar.id,
       name: calendar.name,
+      accessRole: calendar.accessRole,
     }));
   }),
 
@@ -67,7 +68,7 @@ export const calendarRouter = router({
           args: [{
             accountId: ctx.accountId,
             userId: ctx.session!.user.id,
-            calendarType: input?.calendarType,
+            forceFullSync: true, // Always force full sync for manual resyncs
           }],
           taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'calendar-sync-queue',
           workflowId,
@@ -151,6 +152,49 @@ export const calendarRouter = router({
       });
     }),
 
+    createAllDayEvent: protectedProcedure
+      .input(z.object({
+        title: z.string(),
+        description: z.string().optional(),
+        location: z.string().optional(),
+        calendarId: z.string(),
+        start: z.object({
+          date: z.string(),
+          timeZone: z.string(),
+        }),
+        end: z.object({
+          date: z.string(),
+          timeZone: z.string(),
+        }),
+       
+      })).mutation(async ({ ctx, input }) => {
+        await assertUserHasWritePermissionToCalendar({ accountId: ctx.accountId, calendarId: input.calendarId });
+
+        console.log("Creating all day event", input);
+        return await createAllDayEvent({ accountId: ctx.accountId, calendarId: input.calendarId, title: input.title, description: input.description, location: input.location, start: input.start, end: input.end });
+
+      }),
+
+      createTimedEvent: protectedProcedure
+        .input(z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          location: z.string().optional(),
+          calendarId: z.string(),
+          start: z.object({
+            dateTime: z.string(),
+            timeZone: z.string(),
+          }),
+          end: z.object({
+            dateTime: z.string(),
+            timeZone: z.string(),
+          }),
+        })).mutation(async ({ ctx, input }) => {
+          await assertUserHasWritePermissionToCalendar({ accountId: ctx.accountId, calendarId: input.calendarId });
+
+          console.log("Creating timed event", input);
+          return await createTimedEvent({ accountId: ctx.accountId, calendarId: input.calendarId, title: input.title, description: input.description, location: input.location, start: input.start, end: input.end });
+        }),
 
 });
 

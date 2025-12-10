@@ -404,19 +404,18 @@ export const notifyProviderOfCreatedEvent = async (params: {dbEvent: InferSelect
 
   const authClient = await getValidGoogleOAuthClient({accountId: params.accountId});
   const calendarClient = google.calendar({ version: "v3", auth: authClient });
-  if(params.dbEvent.allDay){
-    console.log("ALL DAY EVENT");
+  const startTime = params.dbEvent.allDay ? params.dbEvent.startTime.toISOString().slice(0, 10) : params.dbEvent.startTime.toISOString();
+  const endTime = params.dbEvent.allDay ? params.dbEvent.endTime.toISOString().slice(0, 10) : params.dbEvent.endTime.toISOString();
     const providerResponse = await calendarClient.events.insert({
       calendarId: params.calendarProviderCalendarId,
       requestBody: {
         summary: params.dbEvent.title,
         description: params.dbEvent.description,
         location: params.dbEvent.location,
-        start: { date: params.dbEvent.startTime.toISOString().slice(0, 10) },
-        end: { date: params.dbEvent.endTime.toISOString().slice(0, 10) },
+        start: params.dbEvent.allDay ? { date: startTime } : { dateTime: startTime, timeZone: params.dbEvent.timeZone },
+        end: params.dbEvent.allDay ? { date: endTime } : { dateTime: endTime, timeZone: params.dbEvent.timeZone },
       },
     });
-    console.log("provider response", providerResponse.data);
     if(providerResponse.status === 200){
       console.log("updating provider event id");
       await updateEventProviderEventId({providerEventId: providerResponse.data.id as string, eventId: params.dbEvent.id});
@@ -424,33 +423,7 @@ export const notifyProviderOfCreatedEvent = async (params: {dbEvent: InferSelect
     } else {
       throw new Error("Failed to create event in provider");
     }
-  } else {
-    console.log("NOT ALL DAY EVENT");
 
-  const response = await calendarClient.events.insert({
-    calendarId: params.calendarProviderCalendarId,
-    requestBody: {
-      summary: params.dbEvent.title,
-      description: params.dbEvent.description,
-      location: params.dbEvent.location,
-      start: {
-        dateTime: params.dbEvent.startTime.toISOString(),
-        timeZone: params.dbEvent.timeZone,
-      },
-      end: {
-        dateTime: params.dbEvent.endTime.toISOString(),
-        timeZone: params.dbEvent.timeZone,
-      },
-    },
-  });
-console.log("provider response", response.data, response.status);
-  if(response.status === 200){
-    await updateEventProviderEventId({providerEventId: response.data.id as string, eventId: params.dbEvent.id});
-    return response.data;
-  } else {
-    throw new Error("Failed to create event in provider");
-  }
-}
 }
 
 

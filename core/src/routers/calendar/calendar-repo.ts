@@ -457,3 +457,16 @@ console.log("provider response", response.data, response.status);
 export const updateEventProviderEventId = async (params :{providerEventId: string, eventId: string}) => {
   await db.update(events).set({providerEventId: params.providerEventId}).where(eq(events.id, params.eventId));
 }
+
+export const assertUserHasWritePermissionToCalendar = async (params: {accountId: string, calendarId: string}) => {
+  const provider = await assertCalenderHasProvider({accountId: params.accountId, calendarId: params.calendarId})
+  const calendar = await db.query.calendars.findFirst({
+    where: and(eq(calendars.id, params.calendarId), eq(calendars.providerId, provider.providerId)),
+  })
+  if(!calendar || !provider) {
+    throw new Error("Calendar not found");
+  }
+  if(calendar.accessRole !== 'owner' && calendar.accessRole !== 'writer'){
+    throw new Error("FORBIDDEN");
+  }
+}

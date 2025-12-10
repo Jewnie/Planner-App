@@ -1,6 +1,6 @@
 import { proxyActivities, log } from '@temporalio/workflow';
 import type * as activities from './activities.js';
-import type { CalendarInfo } from './activities.js';
+import type { GoogleCalendarInfo } from './activities.js';
 import type { calendar_v3 } from 'googleapis';
 
 
@@ -78,17 +78,14 @@ export async function syncGoogleCalendarWorkflow(
   }
 
   let accountSyncToken: string  | null = input.forceFullSync ? null : provider.syncToken; 
-  let allCalendars: CalendarInfo[] = [];
+  let allCalendars: GoogleCalendarInfo[] = [];
   let pageToken: string | null = null;
 
     // Step 2: Fetch list of calendars from Google
     log.info('Fetching calendars from Google');
     do {
-      const result: {
-        calendars: CalendarInfo[];
-        nextPageToken?: string | null;
-        nextSyncToken?: string | null;
-      } = await fetchGoogleCalendars({accountId: input.accountId, nextPageToken: pageToken || undefined, nextSyncToken: accountSyncToken || undefined});
+      const result: { calendars: GoogleCalendarInfo[], nextPageToken: string | null, nextSyncToken: string | null } = await fetchGoogleCalendars({accountId: input.accountId, nextPageToken: pageToken || undefined, nextSyncToken: accountSyncToken || undefined});
+
       allCalendars = [...allCalendars, ...result.calendars];
       pageToken = result.nextPageToken || null;
       accountSyncToken = result.nextSyncToken || null;
@@ -106,6 +103,7 @@ export async function syncGoogleCalendarWorkflow(
           googleCalendarId: calendar.id,
           name: calendar.summary,
           color: calendar.foregroundColor,
+          accessRole: calendar.accessRole,
           metadata: {
             colorId: calendar.colorId,
             backgroundColor: calendar.backgroundColor,

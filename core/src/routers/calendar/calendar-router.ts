@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../../trpc.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning, createAllDayEvent, createTimedEvent } from "./calendar-repo.js";
+import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning, createAllDayEvent, createTimedEvent, assertUserHasWritePermissionToCalendar } from "./calendar-repo.js";
 import { formatDateToYYYYMMDD } from "../../lib/date-utils.js";
 
 
@@ -21,6 +21,7 @@ export const calendarRouter = router({
     return userCalendars.map(calendar => ({
       id: calendar.id,
       name: calendar.name,
+      accessRole: calendar.accessRole,
     }));
   }),
 
@@ -167,6 +168,8 @@ export const calendarRouter = router({
         }),
        
       })).mutation(async ({ ctx, input }) => {
+        await assertUserHasWritePermissionToCalendar({ accountId: ctx.accountId, calendarId: input.calendarId });
+
         console.log("Creating all day event", input);
         return await createAllDayEvent({ accountId: ctx.accountId, calendarId: input.calendarId, title: input.title, description: input.description, location: input.location, start: input.start, end: input.end });
 
@@ -187,8 +190,9 @@ export const calendarRouter = router({
             timeZone: z.string(),
           }),
         })).mutation(async ({ ctx, input }) => {
-          console.log("Creating timed event", input);
+          await assertUserHasWritePermissionToCalendar({ accountId: ctx.accountId, calendarId: input.calendarId });
 
+          console.log("Creating timed event", input);
           return await createTimedEvent({ accountId: ctx.accountId, calendarId: input.calendarId, title: input.title, description: input.description, location: input.location, start: input.start, end: input.end });
         }),
 

@@ -18,6 +18,7 @@ export const calendars = pgTable("calendars", {
   providerCalendarId: text("provider_calendar_id").notNull(), // Provider-specific calendar ID (e.g., Google: "jonathan.loore@gmail.com")
   metadata: json("metadata"),
   syncToken: text("sync_token"),
+  accessRole: text("access_role").$type<"owner" | "writer" | "reader" |"none"|"freeBusyReader">(),
 });
 
 export const calendarWatches = pgTable("calendar_watches", {

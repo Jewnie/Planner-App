@@ -131,7 +131,6 @@ export function CreateEventPopover(props: {
   });
 
   const onSubmit = handleSubmit(async (data: EventFormData) => {
-    console.log(data);
     try {
       const timeZone =
         data.allDay === false ? data.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -259,11 +258,16 @@ export function CreateEventPopover(props: {
                 aria-invalid={errors.calendarId ? 'true' : 'false'}
               >
                 <option value="">Select a calendar</option>
-                {calendarsQuery.data?.map((calendar) => (
-                  <option key={calendar.id} value={calendar.id}>
-                    {calendar.name}
-                  </option>
-                ))}
+                {calendarsQuery.data
+                  ?.filter(
+                    (calendar) =>
+                      calendar.accessRole === 'owner' || calendar.accessRole === 'writer',
+                  )
+                  .map((calendar) => (
+                    <option key={calendar.id} value={calendar.id}>
+                      {calendar.name}
+                    </option>
+                  ))}
               </select>
               {errors.calendarId && (
                 <p className="text-sm text-destructive">{errors.calendarId.message}</p>

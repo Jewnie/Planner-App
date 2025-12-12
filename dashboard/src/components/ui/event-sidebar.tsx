@@ -7,7 +7,7 @@ import { format, isSameDay } from 'date-fns';
 import { Spinner } from './spinner';
 import { useState } from 'react';
 import type { CalendarEvent } from '../month-calendar';
-import { Plus } from 'lucide-react';
+import { Plus, TrashIcon } from 'lucide-react';
 
 function formatEventTime(event: CalendarEvent): string {
   const start = event.startTime;
@@ -84,6 +84,7 @@ export function EventSidebar(props: {
   setIsCreatingEvent: () => void;
   onClose?: () => void;
 }) {
+  const trpcUtils = trpc.useUtils();
   const selectedDate = props.selectedDate ?? new Date();
   // Format date as YYYY-MM-DD string to avoid timezone issues
   // This ensures the server interprets the date correctly regardless of client timezone
@@ -95,6 +96,18 @@ export function EventSidebar(props: {
       calendarIds: props.selectedCalendarIds,
     },
   });
+
+  const deleteEventMutation = trpc.calendar.deleteEvent.useMutation({
+    onSuccess: () => {
+      trpcUtils.calendar.listEvents.invalidate();
+    },
+  });
+  const handleDeleteEvent = (props: { calendarId: string; eventId: string }) => {
+    deleteEventMutation.mutate({
+      calendarId: props.calendarId,
+      eventId: props.eventId,
+    });
+  };
 
   const events = dayEventsResult.data || [];
   const dateLabel = format(selectedDate, 'EEEE, MMMM d, yyyy');
@@ -171,8 +184,18 @@ export function EventSidebar(props: {
             <div className="flex flex-col gap-3">
               {events.map((event: CalendarEvent) => (
                 <Card key={event.id || `event-${Math.random()}`} className="overflow-hidden">
-                  <CardHeader>
+                  <CardHeader className="flex items-center justify-between">
                     <CardTitle className="text-base leading-tight">{event.title}</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={deleteEventMutation.isPending}
+                      onClick={() => {
+                        handleDeleteEvent({ calendarId: event.calendarId, eventId: event.id });
+                      }}
+                    >
+                      <TrashIcon size={16} className="text-destructive" />
+                    </Button>
                   </CardHeader>
                   <CardContent className="space-y-1 pt-0">
                     {formatEventTime(event) && (

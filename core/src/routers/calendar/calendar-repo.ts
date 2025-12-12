@@ -442,4 +442,34 @@ export const assertUserHasWritePermissionToCalendar = async (params: {accountId:
   if(calendar.accessRole !== 'owner' && calendar.accessRole !== 'writer'){
     throw new Error("FORBIDDEN");
   }
+
+  return {provider, calendar}
+
+}
+
+export const assertEventExists = async(params:{accountId: string, eventId: string, calendarId:string}) => {
+  const event = await db.query.events.findFirst({
+    where: and(eq(events.id, params.eventId), eq(events.calendarId, params.calendarId)),
+    columns:{id: true, calendarId: true, providerEventId: true}
+  })
+  if(!event) {
+    throw new Error("Event not found");
+  }
+  return event;
+}
+
+export const deleteEvent = async(params:{accountId: string, eventId: string, calendarId:string}) => {
+  const {provider, calendar} = await assertUserHasWritePermissionToCalendar({accountId: params.accountId, calendarId: params.calendarId})
+  const event = await assertEventExists({accountId: params.accountId, eventId: params.eventId, calendarId: params.calendarId})
+
+  if(provider.providerType !== "plnnr"){
+    const authClient = await getValidGoogleOAuthClient({accountId: params.accountId});
+    const calendarClient = google.calendar({ version: "v3", auth: authClient });
+    await calendarClient.events.delete({
+      calendarId: calendar.providerCalendarId,
+      eventId: event.providerEventId,
+    });
+  }
+  await db.delete(events).where(and(eq(events.id, params.eventId), eq(events.calendarId, params.calendarId))); // TODO: SOFTDELETE VS HARDDELETE?
+ 
 }

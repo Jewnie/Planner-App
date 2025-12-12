@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../../trpc.js";
 import { TRPCError } from "@trpc/server";
 import { getTemporalClient } from "../../workflows/temporal-client.js";
-import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning, createAllDayEvent, createTimedEvent, assertUserHasWritePermissionToCalendar } from "./calendar-repo.js";
+import { listEventsByAccountId, getCalendarProvidersForAccount, getCalendarsForProviders, checkIfSyncIsRunning, createAllDayEvent, createTimedEvent, assertUserHasWritePermissionToCalendar, deleteEvent } from "./calendar-repo.js";
 import { formatDateToYYYYMMDD } from "../../lib/date-utils.js";
 
 
@@ -195,6 +195,15 @@ export const calendarRouter = router({
           console.log("Creating timed event", input);
           return await createTimedEvent({ accountId: ctx.accountId, calendarId: input.calendarId, title: input.title, description: input.description, location: input.location, start: input.start, end: input.end });
         }),
+
+        deleteEvent : protectedProcedure
+          .input(z.object({
+            calendarId: z.string(),
+            eventId: z.string(),
+          })).mutation(async ({ ctx, input }) => {
+            await assertUserHasWritePermissionToCalendar({ accountId: ctx.accountId, calendarId: input.calendarId });
+            await deleteEvent({ accountId: ctx.accountId, eventId: input.eventId, calendarId: input.calendarId });
+          }),
 
 });
 

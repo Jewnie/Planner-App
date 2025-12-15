@@ -4,7 +4,7 @@ import { db } from "../../db.js";
 
 import { calendarProviders, calendars, calendarWatches, events } from "../../db/calendar-schema.js";
 import { account } from "../../db/auth-schema.js";
-import { eq, and, or, inArray, isNull, isNotNull, gt, desc, lt } from "drizzle-orm";
+import { eq, and, or, inArray, isNull, isNotNull, gt, desc, lt, ne } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 
 import RRulePkg from "rrule";
@@ -176,7 +176,7 @@ export const listEventsByAccountId = async (
       and(
         inArray(events.calendarId, calendarIds),
         isNull(events.recurringRule),
-        or(...rangeConditions)
+        or(...rangeConditions),
       )
     );
     const recurringEvents = await db
@@ -186,6 +186,7 @@ export const listEventsByAccountId = async (
       and(
         inArray(events.calendarId, calendarIds),
         isNotNull(events.recurringRule),
+        ne(events.status, "cancelled")
       )
     );
   // Separate recurring and non-recurring events
@@ -231,13 +232,45 @@ export const listEventsByAccountId = async (
     }
   }
 
-  // Combine non-recurring events with expanded recurring instances
-  const allEvents = [...nonRecurringEvents, ...expanded];
+  // Filter out cancelled instances of recurring events
+  // Google stores cancelled instances as separate non-recurring events with:
+  // - status === "cancelled"
+  // - recurringEventId pointing to the parent recurring event
+  // - matching startTime and endTime to the specific instance
+  const recurringEventCancellations = nonRecurringEvents.filter(
+    (event) => event.status === "cancelled" && event.recurringEventId
+  );
+
+ 
+
+  // Filter expanded recurring instances: remove any that match a cancellation
+  const filteredExpanded = expanded.filter((expandedEvent) => {
+    // Skip if this expanded event doesn't have a recurringEventId
+    // Check if there's a cancellation for this specific instance
+    const isCancelled = recurringEventCancellations.some((cancellation) => {
+      // Match by recurringEventId and exact time (using getTime() for Date comparison)
+      const recurringIdMatches = cancellation.recurringEventId === expandedEvent.providerEventId;
+      const startTimeMatches = cancellation.startTime.getTime() === expandedEvent.startTime.getTime();
+      const endTimeMatches = cancellation.endTime.getTime() === expandedEvent.endTime.getTime();
+      if(recurringIdMatches){
+        console.log("Recurring event cancellation", cancellation.title, cancellation.startTime, expandedEvent.title, expandedEvent.startTime);
+      }
+      return recurringIdMatches && startTimeMatches && endTimeMatches;
+    });
+
+    // Keep the event if it's NOT cancelled
+    return !isCancelled;
+  });
+
+  // Filter out all cancelled non-recurring events (including the cancellation markers)
+  const filteredNonRecurringEvents = nonRecurringEvents.filter(
+    (event) => event.status !== "cancelled"
+  );
+
+  // Combine filtered results
+  const allEvents = [...filteredNonRecurringEvents, ...filteredExpanded];
 
   
-
-
-  // Transform to API format
   return allEvents
 }
 

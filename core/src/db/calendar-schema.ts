@@ -45,6 +45,7 @@ export const events = pgTable("events", {
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
+  status: text("status").$type<"confirmed" | "tentative" | "cancelled">().default("confirmed"),
   
   // Store real instants in time (always UTC!)
   startTime: timestamp("start_time", { withTimezone: true }).notNull(),
@@ -55,6 +56,7 @@ export const events = pgTable("events", {
   
   // Standard RRULE
   recurringRule: text("recurring_rule"),
+  recurringEventId: text("recurring_event_id"),
   
   // Optional original timezone (for display)
   timeZone: text("time_zone"),

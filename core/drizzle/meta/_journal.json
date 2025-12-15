@@ -71,6 +71,13 @@
       "when": 1765377668184,
       "tag": "0009_busy_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1765793317853,
+      "tag": "0010_giant_lizard",
+      "breakpoints": true
     }
   ]
 }

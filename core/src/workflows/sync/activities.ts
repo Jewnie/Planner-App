@@ -50,6 +50,8 @@ export interface GoogleCalendarInfo {
   foregroundColor?: string;
 }
 
+export type GoogleCalendarEventStatus = "confirmed" | "tentative" | "cancelled" | undefined;
+
 /**
  * Get Google OAuth2 client for a user account
  * Uses the shared utility that handles automatic token refresh
@@ -413,10 +415,12 @@ export async function upsertEvents(
           timeZone: googleEvent.start?.timeZone || null,
           rawData: googleEvent || null,
           updatedAt: new Date(),
+          status: googleEvent.status as GoogleCalendarEventStatus,
+          recurringEventId: googleEvent.recurringEventId || null,
         })
         .where(eq(events.id, existing.id));
 
-      // Update attendees
+      // Update attendees TODO: DELETE??
       await db
         .delete(eventAttendees)
         .where(eq(eventAttendees.eventId, existing.id));
@@ -449,6 +453,8 @@ export async function upsertEvents(
           recurringRule: googleEvent.recurrence?.[0] || null,
           timeZone: googleEvent.start?.timeZone || null,
           rawData: googleEvent || null,
+          status: googleEvent.status as GoogleCalendarEventStatus,
+          recurringEventId: googleEvent.recurringEventId || null,
         })
         .returning();
 

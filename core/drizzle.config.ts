@@ -7,6 +7,7 @@ export default defineConfig({
     './src/db/auth-schema.ts',
     './src/db/calendar-schema.ts',
     './src/db/integration-schema.ts',
+    './src/db/household-schema.ts',
   ], // All schema files
   out: './drizzle', // Your migrations folder
   dialect: 'postgresql',

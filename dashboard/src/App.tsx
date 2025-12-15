@@ -6,10 +6,11 @@ import { Spinner } from '@/components/ui/spinner';
 import HomePage from '@/components/pages/dashboard';
 import InboxPage from '@/components/pages/inbox';
 import CalendarPage from '@/components/pages/calendar';
-import SearchPage from '@/components/pages/search';
 import IntegrationsPage from '@/components/pages/integrations';
 import LoginPage from '@/components/pages/login';
 import { authClient } from './lib/auth-client';
+import HouseholdsDashboardPage from './components/pages/households-dashboard';
+import HouseholdPage from './components/pages/household';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const sessionQuery = authClient.useSession();
@@ -68,7 +69,8 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="inbox" element={<InboxPage />} />
         <Route path="calendar" element={<CalendarPage />} />
-        <Route path="search" element={<SearchPage />} />
+        <Route path="households" element={<HouseholdsDashboardPage />} />
+        <Route path="households/:householdId" element={<HouseholdPage />} />
         <Route
           path="settings"
           element={<Navigate to="/dashboard/settings/integrations" replace />}

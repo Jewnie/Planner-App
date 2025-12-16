@@ -15,14 +15,17 @@ import {
   SidebarMenuSubButton,
 } from '@/components/ui/sidebar';
 import { NavUser } from './nav-user';
-import { authClient } from '@/lib/auth-client';
 import { trpc } from '@/lib/trpc';
 import { useMemo } from 'react';
+import { useFeatureFlagEnabled } from 'posthog-js/react';
+import { useAuth } from '@/contexts/use-auth';
 
 export function AppSidebar() {
   const location = useLocation();
-  const sessionQuery = authClient.useSession();
-  const user = sessionQuery.data?.user;
+  const { user } = useAuth();
+
+  const isHouseholdsEnabled = useFeatureFlagEnabled('households');
+  console.log('isHouseholdsEnabled', isHouseholdsEnabled);
 
   const householdResponse = trpc.household.listHouseholds.useQuery();
 
@@ -57,15 +60,19 @@ export function AppSidebar() {
       url: '/dashboard/calendar',
       icon: <Calendar />,
     },
-    {
-      title: 'Households',
-      url: '/dashboard/households',
-      icon: <Home />,
-      subItems: householdItems?.map((household) => ({
-        title: household.title,
-        url: household.url,
-      })),
-    },
+    ...(isHouseholdsEnabled
+      ? [
+          {
+            title: 'Households',
+            url: '/dashboard/households',
+            icon: <Home />,
+            subItems: householdItems?.map((household) => ({
+              title: household.title,
+              url: household.url,
+            })),
+          },
+        ]
+      : []),
     {
       title: 'Settings',
       url: '/dashboard/settings/integrations',

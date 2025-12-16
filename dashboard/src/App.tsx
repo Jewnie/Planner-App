@@ -8,15 +8,15 @@ import InboxPage from '@/components/pages/inbox';
 import CalendarPage from '@/components/pages/calendar';
 import IntegrationsPage from '@/components/pages/integrations';
 import LoginPage from '@/components/pages/login';
-import { authClient } from './lib/auth-client';
 import HouseholdsDashboardPage from './components/pages/households-dashboard';
 import HouseholdPage from './components/pages/household';
+import { useAuth } from './contexts/use-auth';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const sessionQuery = authClient.useSession();
+  const { isLoading, session } = useAuth();
 
   // Wait for the session query to finish loading before making redirect decisions
-  if (sessionQuery.isPending) {
+  if (isLoading) {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
         <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
@@ -27,7 +27,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Only redirect if session query is done and there's no session
-  if (!sessionQuery.data?.session) {
+  if (!session) {
     return <Navigate to="/login" replace />;
   }
   return children;

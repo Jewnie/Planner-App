@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useFeatureFlagEnabled } from 'posthog-js/react';
 
 const HouseholdsDashboard = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [householdName, setHouseholdName] = useState('');
   const [error, setError] = useState('');
+  const isHouseholdsEnabled = useFeatureFlagEnabled('households');
+  const navigate = useNavigate();
+
+  if (!isHouseholdsEnabled) {
+    navigate('/dashboard');
+  }
 
   const householdsQuery = trpc.household.listHouseholds.useQuery();
   const houseHoldMembershipCount = useMemo(() => {

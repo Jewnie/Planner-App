@@ -5,7 +5,7 @@ function hashString(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
   return Math.abs(hash);
@@ -41,6 +41,22 @@ const TAILWIND_COLORS = [
  * The void statement prevents the unused variable warning while keeping the classes visible to Tailwind
  */
 const ALL_COLOR_CLASSES = [
+  'text-red-500',
+  'text-green-500',
+  'text-yellow-500',
+  'text-purple-500',
+  'text-pink-500',
+  'text-indigo-500',
+  'text-teal-500',
+  'text-orange-500',
+  'text-cyan-500',
+  'text-emerald-500',
+  'text-violet-500',
+  'text-fuchsia-500',
+  'text-rose-500',
+  'text-amber-500',
+  'text-lime-500',
+  'text-sky-500',
   // Background colors - 100 shades
   'bg-blue-100',
   'bg-green-100',
@@ -136,11 +152,11 @@ void ALL_COLOR_CLASSES; // Prevents unused variable warning while keeping classe
 /**
  * Gets a deterministic Tailwind color class based on a string input.
  * The same string will always return the same color.
- * 
+ *
  * @param str - The string to generate a color for
  * @param variant - Optional variant: 'bg' for background, 'text' for text, 'border' for border (default: 'bg')
  * @returns A Tailwind color class string (e.g., 'bg-blue-100', 'text-green-100')
- * 
+ *
  * @example
  * getDeterministicColor('calendar-1') // returns 'bg-blue-100'
  * getDeterministicColor('calendar-1', 'text') // returns 'text-blue-100'
@@ -149,7 +165,7 @@ void ALL_COLOR_CLASSES; // Prevents unused variable warning while keeping classe
 export function getDeterministicColor(
   str: string,
   variant: 'bg' | 'text' | 'border' = 'bg',
-  shade?: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900
+  shade?: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900,
 ): string {
   if (!str) {
     // Default color for empty strings
@@ -157,12 +173,10 @@ export function getDeterministicColor(
   }
 
   const hash = hashString(str);
-  
+
   // Select color from palette
   const colorIndex = hash % TAILWIND_COLORS.length;
   const color = TAILWIND_COLORS[colorIndex];
-  
-  
+
   return `${variant}-${color}-${shade ?? 100}`;
 }
-

@@ -1,19 +1,8 @@
-"use client"
+'use client';
 
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
-} from "lucide-react"
+import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from 'lucide-react';
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,38 +11,35 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { useSidebar } from "@/components/ui/sidebar-context"
-import { authClient } from "@/lib/auth-client"
-import { useNavigate } from "react-router-dom"
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar-context';
+import { authClient } from '@/lib/auth-client';
+import { useNavigate } from 'react-router-dom';
+import posthog from 'posthog-js';
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar?: string
-  }
+    name: string;
+    email: string;
+    avatar?: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
-  const navigate = useNavigate()
-  const userInitials = user.name.charAt(0)
-   const handleLogout = async () => {
+  const { isMobile } = useSidebar();
+  const navigate = useNavigate();
+  const userInitials = user.name.charAt(0);
+  const handleLogout = async () => {
     await authClient.signOut({
-        fetchOptions: {
-          onSuccess: () => {
-            navigate("/login"); // redirect to login page
-          },
+      fetchOptions: {
+        onSuccess: () => {
+          navigate('/login'); // redirect to login page
         },
-      });
-  }
-
+      },
+    });
+    posthog.reset();
+  };
 
   return (
     <SidebarMenu>
@@ -77,7 +63,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -116,7 +102,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} >
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>
@@ -124,5 +110,5 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

@@ -250,14 +250,17 @@ export const listEventsByAccountId = async (
 
   // Filter expanded recurring instances: remove any that match a cancellation
   const filteredExpanded = expanded.filter((expandedEvent) => {
-    // Skip if this expanded event doesn't have a recurringEventId
-    // Check if there's a cancellation for this specific instance
     const isCancelled = recurringEventCancellations.some((cancellation) => {
-      // Match by recurringEventId and exact time (using getTime() for Date comparison)
       const recurringIdMatches = cancellation.recurringEventId === expandedEvent.providerEventId;
-      const startTimeMatches =
-        cancellation.startTime.getTime() === expandedEvent.startTime.getTime();
-      const endTimeMatches = cancellation.endTime.getTime() === expandedEvent.endTime.getTime();
+
+      // Compare the day on which it starts and ends
+      const cancellationStartDay = startOfDay(cancellation.startTime);
+      const expandedStartDay = startOfDay(expandedEvent.startTime);
+      const startTimeMatches = cancellationStartDay.getTime() === expandedStartDay.getTime();
+
+      const cancellationEndDay = startOfDay(cancellation.endTime);
+      const expandedEndDay = startOfDay(expandedEvent.endTime);
+      const endTimeMatches = cancellationEndDay.getTime() === expandedEndDay.getTime();
 
       return recurringIdMatches && startTimeMatches && endTimeMatches;
     });

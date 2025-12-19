@@ -18,14 +18,13 @@ import { NavUser } from './nav-user';
 import { trpc } from '@/lib/trpc';
 import { useMemo } from 'react';
 import { useFeatureFlagEnabled } from 'posthog-js/react';
-import { useAuth } from '@/contexts/use-auth';
+import { useAuth } from '@/contexts/auth/use-auth';
 
 export function AppSidebar() {
   const location = useLocation();
   const { user } = useAuth();
 
   const isHouseholdsEnabled = useFeatureFlagEnabled('households');
-  console.log('isHouseholdsEnabled', isHouseholdsEnabled);
 
   const householdResponse = trpc.household.listHouseholds.useQuery();
 

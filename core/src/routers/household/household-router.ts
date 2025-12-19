@@ -47,4 +47,19 @@ export const householdRouter = router({
     const { count } = await countHouseholdsByUserId({ userId: userId! });
     return count;
   }),
+
+  inviteMemberToHousehold: protectedProcedure
+    .input(
+      z.object({
+        householdId: z.string(),
+        email: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { householdId, email } = input;
+      const { session } = ctx;
+      const userId = session?.user.id;
+
+      const invitation = await createHouseholdInvitation({ householdId, userId: userId!, email });
+    }),
 });

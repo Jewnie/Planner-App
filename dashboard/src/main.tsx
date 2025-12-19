@@ -6,7 +6,7 @@ import './index.css';
 import App from './App';
 import { trpc, createTRPCClient } from './lib/trpc';
 import { PostHogProvider } from 'posthog-js/react';
-import { AuthProvider } from './contexts/auth-context';
+import { AuthProvider } from './contexts/auth/auth-context';
 
 const queryClient = new QueryClient();
 const trpcClient = createTRPCClient();

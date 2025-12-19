@@ -10,7 +10,7 @@ import IntegrationsPage from '@/components/pages/integrations';
 import LoginPage from '@/components/pages/login';
 import HouseholdsDashboardPage from './components/pages/households-dashboard';
 import HouseholdPage from './components/pages/household';
-import { useAuth } from './contexts/use-auth';
+import { useAuth } from './contexts/auth/use-auth';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isLoading, session } = useAuth();

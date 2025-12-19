@@ -1,6 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '../../db.js';
 import { householdMembers, households } from '../../db/household-schema.js';
+import { user } from '../../db/auth-schema.js';
 
 export const createHousehold = async (params: { name: string; userId: string }) => {
   const { name, userId } = params;
@@ -38,17 +39,6 @@ export const countHouseholdsByUserId = async (params: { userId: string }) => {
 
 export const listHouseholdsByUserId = async (params: { userId: string }) => {
   const { userId } = params;
-  const userHouseholdMemberships = await db
-    .select({ householdId: householdMembers.householdId })
-    .from(householdMembers)
-    .where(eq(householdMembers.userId, userId));
-
-  const householdIds = userHouseholdMemberships.map((membership) => membership.householdId);
-
-  // If no memberships, return empty array
-  if (householdIds.length === 0) {
-    return { userHouseholds: [] };
-  }
 
   const userHouseholds = await db
     .select({
@@ -56,9 +46,49 @@ export const listHouseholdsByUserId = async (params: { userId: string }) => {
       name: households.name,
       createdAt: households.createdAt,
       createdBy: households.createdBy,
+      role: householdMembers.role,
     })
     .from(households)
-    .where(inArray(households.id, householdIds));
+    .leftJoin(householdMembers, eq(households.id, householdMembers.householdId))
+    .where(eq(householdMembers.userId, userId));
 
-  return { userHouseholds };
+  const householdIds = userHouseholds.map((household) => household.id);
+
+  const householdMemberships = await db
+    .select({
+      userId: householdMembers.userId,
+      householdId: householdMembers.householdId,
+      userName: user.name,
+    })
+    .from(householdMembers)
+    .leftJoin(user, eq(householdMembers.userId, user.id))
+    .where(inArray(householdMembers.householdId, householdIds));
+
+  const userHouseholfdWithMembersMapped = userHouseholds.map((household) => {
+    const members = householdMemberships.filter(
+      (membership) => membership.householdId === household.id,
+    );
+    return {
+      ...household,
+      members,
+    };
+  });
+
+  return { userHouseholds: userHouseholfdWithMembersMapped };
+};
+
+export const createHouseholdInvitation = async (params: {
+  householdId: string;
+  userId: string;
+  email: string;
+}) => {
+  const { householdId, userId, email } = params;
+
+  // const invitation = await db
+  //   .insert(householdInvitations)
+  //   .values({ householdId, userId, email })
+  //   .returning({
+  //     id: householdInvitations.id,
+  //   });
+  return;
 };

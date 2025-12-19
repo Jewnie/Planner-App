@@ -27,10 +27,7 @@
   "compounds": [
     {
       "name": "All Services",
-      "configurations": [
-        "Core",
-        "Dashboard"
-      ]
+      "configurations": ["Core", "Dashboard"]
     }
   ]
 }

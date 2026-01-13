@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "concurrently -n server,worker -c blue,green \"tsx src/server.ts\" \"tsx src/workflows/worker.ts\"",
-    "dev": "concurrently -n server,worker -c blue,green \"nodemon --watch src --ext ts --exec 'tsx src/server.ts'\" \"nodemon --watch src/workflows --ext ts --exec 'tsx src/workflows/worker.ts'\"",
+    "dev": "concurrently -n server,worker -c blue,green \"nodemon --watch src --ext ts --exec \\\"npx tsx src/server.ts\\\"\" \"nodemon --watch src/workflows --ext ts --exec \\\"npx tsx src/workflows/worker.ts\\\"\"",
     "server": "tsx src/server.ts",
     "server:dev": "nodemon --watch src --ext ts --exec \"tsx src/server.ts\"",
     "worker": "tsx src/workflows/worker.ts",
@@ -58,7 +58,7 @@
     "drizzle-kit": "^0.31.6",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
-    "tsx": "^4.20.6",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }

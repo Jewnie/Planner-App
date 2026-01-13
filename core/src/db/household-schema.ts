@@ -1,6 +1,6 @@
 import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
-import { user } from './auth-schema.js';
-import { calendars } from './calendar-schema.js';
+import { user } from './auth-schema';
+import { calendars } from './calendar-schema';
 
 export const households = pgTable('households', {
   id: uuid('id').primaryKey().defaultRandom(),

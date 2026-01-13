@@ -9,7 +9,7 @@ export default defineConfig({
   base: '/',
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ['plnnr-dev-dashboard.johndev.org', 'plnnr-dev-core.johndev.org'],
+    allowedHosts: ['pc-local-core.johndev.org', 'pc-local-dashboard.johndev.org'],
   },
   resolve: {
     // 💡 FIX 2: Define the '@/' alias for Rollup/Vite

@@ -18,11 +18,11 @@ export interface TemporalConnectionConfig {
 
 /**
  * Get Temporal connection configuration based on environment
- * 
+ *
  * In dev mode (NODE_ENV=dev and TEMPORAL_ADDRESS not set):
  * - Connects to local Docker instance at localhost:7234
  * - Uses 'default' namespace
- * 
+ *
  * In prod mode (TEMPORAL_ADDRESS is set):
  * - Connects to Temporal Cloud using TEMPORAL_ADDRESS
  * - Requires TEMPORAL_API_KEY and TEMPORAL_NAMESPACE
@@ -31,20 +31,20 @@ export function getTemporalConnectionConfig(): TemporalConnectionConfig {
   // Determine if we should use local Docker or Temporal Cloud
   // Use local Docker ONLY if NODE_ENV is explicitly 'dev' AND TEMPORAL_ADDRESS is not set
   // This prevents production from accidentally connecting to localhost
-  const isDev = process.env.NODE_ENV === 'dev' && !process.env.TEMPORAL_ADDRESS;
+  const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS || 'localhost:7234';
+  const TEMPORAL_NAMESPACE = process.env.TEMPORAL_NAMESPACE || 'default';
+  const isDev = process.env.NODE_ENV === 'dev' || !TEMPORAL_ADDRESS;
 
   if (isDev) {
     // Local Docker Temporal instance
-    const temporalAddress = 'localhost:7234';
-    const namespace = 'default';
 
     return {
       connectionOptions: {
-        address: temporalAddress,
+        address: TEMPORAL_ADDRESS,
         // No TLS for local development
         // No API key needed for local development
       },
-      namespace,
+      namespace: TEMPORAL_NAMESPACE,
       isDev: true,
     };
   } else {
@@ -55,15 +55,21 @@ export function getTemporalConnectionConfig(): TemporalConnectionConfig {
 
     // Validate required environment variables
     if (!temporalAddress) {
-      throw new Error('TEMPORAL_ADDRESS environment variable is required for Temporal Cloud connection.');
+      throw new Error(
+        'TEMPORAL_ADDRESS environment variable is required for Temporal Cloud connection.',
+      );
     }
 
     if (!apiKey) {
-      throw new Error('TEMPORAL_API_KEY environment variable is required for Temporal Cloud connection.');
+      throw new Error(
+        'TEMPORAL_API_KEY environment variable is required for Temporal Cloud connection.',
+      );
     }
 
     if (!namespace) {
-      throw new Error('TEMPORAL_NAMESPACE environment variable is required for Temporal Cloud connection.');
+      throw new Error(
+        'TEMPORAL_NAMESPACE environment variable is required for Temporal Cloud connection.',
+      );
     }
 
     return {
@@ -80,4 +86,3 @@ export function getTemporalConnectionConfig(): TemporalConnectionConfig {
     };
   }
 }
-

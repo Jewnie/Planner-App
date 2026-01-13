@@ -12,7 +12,7 @@ const queryClient = new QueryClient();
 const trpcClient = createTRPCClient();
 
 const posthogOptions = {
-  api_host: import.meta.env.VITE_POSTHOG_HOST,
+  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
   defaults: '2025-11-30',
 } as const;
 
@@ -20,7 +20,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <PostHogProvider apiKey={import.meta.env.VITE_POSTHOG_KEY} options={posthogOptions}>
+        <PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={posthogOptions}>
           <BrowserRouter>
             <AuthProvider>
               <App />

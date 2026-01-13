@@ -1,19 +1,18 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "Node16",
-    "moduleResolution": "node16",
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    "strict": true,
+    "skipLibCheck": true,
+
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    "strict": true,
+    "resolveJsonModule": true,
+
     "outDir": "dist",
-    "rootDir": ".",
-    "resolveJsonModule": true
+    "rootDir": "."
   },
-  "include": ["src", "drizzle.config.ts"],
-  "ts-node": {
-    "esm": true
-  }
+  "include": ["src", "drizzle.config.ts"]
 }
